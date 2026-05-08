@@ -1,10 +1,16 @@
 # 👾 Pacman Arcade
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/abozanona/pacman-contribution-graph/main/assets/gifs/red_flip.gif" width="100" />
+</p>
+
 > Đồ án môn IT003 - Ứng dụng các thuật toán tìm đường trong game Pacman.
 
-![Python](https://img.shields.io/badge/Python-3.13-blue?logo=python)
-![Pygame](https://img.shields.io/badge/Pygame-2.0+-green?logo=pygame)
-![License](https://img.shields.io/badge/License-MIT-yellow)
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.13-blue?style=for-the-badge&logo=python" />
+  <img src="https://img.shields.io/badge/Pygame-2.0+-green?style=for-the-badge&logo=pygame" />
+  <img src="https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge" />
+</p>
 
 ---
 
@@ -42,6 +48,7 @@ python main.py
 | 🔥 Fire Sword    | 150 | x2 điểm và coin         |
 | ❄️ Ice Sword     | 300 | Làm chậm ghost khi sợ   |
 | 🪓 Battle Axe    | 500 | +1.5s thời gian power   |
+
 
 | Xe | Giá | Hiệu ứng |
 |:---|:---:|:---|
