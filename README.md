@@ -53,14 +53,15 @@ Cherry · Orange · Apple · Melon · ⭐ Star
 
 ---
 
-## 🗂️ Cấu trúc project
-PacmanIT003/
-├── algorithms/       # A*, BFS, Dijkstra, DFS
-├── assets/           # Âm thanh
-├── core/             # Constants, Entity, Map
-├── entities/         # Pacman, Ghost
-├── maps/             # Level definitions
-├── systems/          # Highscore, Player state, Sound
-├── ui/               # HUD, Particles, Bonus items
-├── game.py
-└── main.py
+```markdown
+### 📁 Cấu trúc project
+
+* **algorithms/**: A*, BFS, Dijkstra, DFS
+* **assets/**: Âm thanh
+* **core/**: Constants, Entity, Map
+* **entities/**: Pacman, Ghost
+* **maps/**: Level definitions
+* **systems/**: Highscore, Player state, Sound
+* **ui/**: HUD, Particles, Bonus items
+* `game.py`
+* `main.py`
