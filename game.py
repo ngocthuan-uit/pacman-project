@@ -312,12 +312,6 @@ class Game:
                and reset ghost_combo.
             2. Update Pacman (speed, direction, position).
             3. For each ghost, compute its strategic target then call ghost.update().
-               Targets:
-                   AStarGhost    → Pacman's current tile.
-                   BFSGhost      → 4 tiles ahead of Pacman.
-                   DijkstraGhost → 2 tiles behind Pacman.
-                   DFSGhost      → Pacman's tile normally; corner (1, MAP_ROWS-2)
-                                   when within 8 tiles of Pacman.
             4. Age and cull FloatingText, Particle, and BonusItem lists.
             5. Decrement equip_hint_timer and bonus_spawn_timer; spawn a bonus
                item when the timer reaches zero, then reset it to 8-15 seconds.
@@ -768,21 +762,6 @@ class Game:
 
     def draw(self):
         """Render the complete current frame to self.screen.
-
-        Delegates entirely to draw_start_screen() or draw_shop() when not in
-        an active play state. During play, draws in this order:
-            1. Black background fill.
-            2. Map (walls, dots, power pellets).
-            3. Bonus items.
-            4. Particles (behind entities).
-            5. Ghosts.
-            6. Pacman.
-            7. Floating texts.
-            8. Equipment HUD overlay (top-left).
-            9. HUD bar: score, coins, level, lives (pacman icons), ESC hint.
-           10. Best score badge (top-right corner).
-           11. Frightened timer bar (thin coloured strip above HUD).
-           12. State overlays: READY! banner, GAME OVER screen, or YOU WIN! screen.
         """
         if self.state == "START":
             self.draw_start_screen()
