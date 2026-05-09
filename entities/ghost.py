@@ -18,7 +18,7 @@ class Ghost(Entity):
     State machine:
         normal     → is_frightened=False, is_dead=False  (chases Pacman via get_path)
         frightened → is_frightened=True,  is_dead=False  (wanders randomly at low speed)
-        dead       → is_dead=True                        (rushes home via bfs_to_home at speed 4.0;
+        dead       → is_dead=True                        (rushes home via bfs_to_home at speed 3.5;
                                                            reverts to normal on arrival)
 
     Attributes:
@@ -43,7 +43,7 @@ class Ghost(Entity):
         """Advance the ghost by one frame.
 
         Speed selection:
-            is_dead      → 4.0 px/frame (always, regardless of equipment)
+            is_dead      → 3.5 px/frame (always, regardless of equipment)
             is_frightened → 0.5 if ICE sword equipped, else 1.0
             normal        → self.speed (set by Game based on level)
 
