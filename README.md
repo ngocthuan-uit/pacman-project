@@ -3,8 +3,7 @@
   <img src="https://raw.githubusercontent.com/abozanona/pacman-contribution-graph/main/assets/gifs/red_flip.gif" width="100" />
 </p>
 
-> Đồ án môn IT003 - Ứng dụng các thuật toán tìm đường trong game Pacman.
-
+> 🎮 Tái hiện trò chơi Pacman huyền thoại với góc nhìn hiện đại — nơi 4 con Ghost được trang bị các thuật toán di chuyển riêng biệt (A*, BFS, Dijkstra và DFS) tạo ra những thách thức đa dạng và khó lường. Người chơi không chỉ đơn giản là ăn dot mà còn có thể ghé Black Market để trang bị vũ khí, lên xe phóng nhanh hơn, săn lùng bonus item và tích lũy điểm cao.
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.13-blue?style=for-the-badge&logo=python" />
   <img src="https://img.shields.io/badge/Pygame-2.0+-green?style=for-the-badge&logo=pygame" />
