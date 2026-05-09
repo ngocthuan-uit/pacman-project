@@ -119,100 +119,438 @@ class Pacman(Entity):
         # DRAW VEHICLES
         time_ms = pygame.time.get_ticks()
         if ps.equipped_bike:
-            b_color = BIKE_VESPA_COLOR if ps.equipped_bike == "VESPA" else BIKE_SPORT_COLOR
-            wheel_glow = (min(255, b_color[0]+60), min(255, b_color[1]+60), min(255, b_color[2]+60))
-            
+            b_color  = BIKE_VESPA_COLOR if ps.equipped_bike == "VESPA" else BIKE_SPORT_COLOR
+            dark_b   = tuple(max(0,   c - 80)  for c in b_color)
+            light_b  = tuple(min(255, c + 100) for c in b_color)
+            shadow_b = tuple(max(0,   c - 120) for c in b_color)
+            BLK      = (0, 0, 0)
+            GRY      = (80, 80, 80)
+            LGRY     = (160, 160, 160)
+            DGRY     = (40, 40, 40)
+            CHROME   = (210, 210, 220)
+            SEAT     = (30, 20, 20)
+            SEAT_L   = (60, 45, 45)
+
+            x, y = self.x, self.y
+
+            def px(surf, col, points):
+                """Draw a filled polygon with black outline for pixel-art look."""
+                if len(points) >= 3:
+                    pygame.draw.polygon(surf, col,   points)
+                    pygame.draw.polygon(surf, BLK,   points, 1)
+
+            def circle_px(surf, col, cx, cy, r):
+                pygame.draw.circle(surf, col, (int(cx), int(cy)), r)
+                pygame.draw.circle(surf, BLK, (int(cx), int(cy)), r, 1)
+
+            def wheel(surf, wx, wy, r=9):
+                """Pixel-art wheel with tyre, rim, spokes, hub."""
+                circle_px(surf, (10, 10, 10), wx, wy, r)       # outer tyre
+                circle_px(surf, (35, 35, 35), wx, wy, r - 2)   # tyre inner
+                circle_px(surf, b_color,      wx, wy, r - 5)   # rim
+                # spokes
+                for ang in range(0, 360, 45):
+                    rad = math.radians(ang)
+                    sx  = wx + int((r - 5) * math.cos(rad))
+                    sy  = wy + int((r - 5) * math.sin(rad))
+                    pygame.draw.line(surf, LGRY, (int(wx), int(wy)), (sx, sy), 1)
+                circle_px(surf, CHROME, wx, wy, 3)              # hub
+                pygame.draw.circle(surf, WHITE, (int(wx), int(wy)), 1)  # hub shine
+
             if draw_angle in (0, 180):
                 dm = 1 if draw_angle == 0 else -1
-                wd = 16 if ps.equipped_bike == "SPORT" else 13
 
-                for wx in [self.x - wd*dm, self.x + wd*dm]:
-                    pygame.draw.circle(surface, (20, 20, 20), (int(wx), int(self.y+12)), 9)
-                    pygame.draw.circle(surface, (50, 50, 50), (int(wx), int(self.y+12)), 7)
-                    rim = b_color if ps.equipped_bike == "SPORT" else (210, 210, 210)
-                    pygame.draw.circle(surface, rim, (int(wx), int(self.y+12)), 4)
-                    pygame.draw.circle(surface, WHITE, (int(wx), int(self.y+12)), 2)
-                
                 if ps.equipped_bike == "VESPA":
-                    body_pts = [
-                        (self.x - 20*dm, self.y + 8),
-                        (self.x - 14*dm, self.y - 4),
-                        (self.x - 4*dm,  self.y - 8),
-                        (self.x + 12*dm, self.y - 6),
-                        (self.x + 16*dm, self.y + 2),
-                        (self.x + 14*dm, self.y + 10),
-                        (self.x - 18*dm, self.y + 10),
-                    ]
-                    pygame.draw.polygon(surface, b_color, body_pts)
-                    pygame.draw.polygon(surface, wheel_glow, body_pts, 1)
+                    # ── VESPA SIDE VIEW ──
+                    # rear wheel
+                    wheel(surface, x - 13*dm, y + 10)
+                    # front wheel
+                    wheel(surface, x + 13*dm, y + 10)
 
-                    pygame.draw.ellipse(surface, (40, 40, 40), (self.x - 10*dm, self.y - 11, 16, 6))
-                    
-                    lx = int(self.x + 14*dm)
-                    pygame.draw.circle(surface, (255, 255, 180), (lx, int(self.y - 4)), 4)
-                    pygame.draw.circle(surface, WHITE, (lx, int(self.y - 4)), 2)
-                  
-                    ex = int(self.x - 19*dm)
-                    pygame.draw.rect(surface, (80,80,80), (ex - 4 if dm==1 else ex, int(self.y+7), 6, 3))
-                    if random.random() > 0.5:
-                        pygame.draw.circle(surface, (160,160,160),
-                                           (ex - 6*dm + random.randint(-1,1),
-                                            int(self.y+9) + random.randint(-1,1)),
-                                           random.randint(2,4))
-                else:
-                    body_pts = [
-                        (self.x - 20*dm, self.y + 4),
-                        (self.x - 10*dm, self.y - 9),
-                        (self.x +  2*dm, self.y - 7),
-                        (self.x + 20*dm, self.y + 0),
-                        (self.x + 14*dm, self.y + 11),
-                        (self.x - 14*dm, self.y + 11),
-                    ]
-                    pygame.draw.polygon(surface, b_color, body_pts)
-                    pygame.draw.polygon(surface, (100, 220, 255), [
-                        (self.x + 2*dm, self.y - 7),
-                        (self.x + 18*dm, self.y - 1),
-                        (self.x + 14*dm, self.y + 4),
-                        (self.x + 4*dm,  self.y - 4),
+                    # lower body / footboard
+                    px(surface, shadow_b, [
+                        (x - 16*dm, y + 10),
+                        (x -  4*dm, y +  2),
+                        (x + 10*dm, y +  2),
+                        (x + 14*dm, y + 10),
                     ])
-                    pygame.draw.polygon(surface, wheel_glow, body_pts, 1)
+                    # main body shell
+                    px(surface, b_color, [
+                        (x - 14*dm, y +  8),
+                        (x - 10*dm, y -  4),
+                        (x -  3*dm, y -  9),
+                        (x +  5*dm, y -  8),
+                        (x + 12*dm, y -  3),
+                        (x + 14*dm, y +  3),
+                        (x + 12*dm, y +  8),
+                    ])
+                    # body highlight strip
+                    px(surface, light_b, [
+                        (x -  8*dm, y -  3),
+                        (x -  3*dm, y -  7),
+                        (x +  4*dm, y -  6),
+                        (x +  9*dm, y -  2),
+                        (x +  7*dm, y +  0),
+                        (x +  3*dm, y -  4),
+                        (x -  2*dm, y -  5),
+                        (x -  6*dm, y -  1),
+                    ])
+                    # dark shadow underside
+                    px(surface, dark_b, [
+                        (x -  6*dm, y +  5),
+                        (x +  8*dm, y +  5),
+                        (x + 12*dm, y +  8),
+                        (x -  10*dm, y + 8),
+                    ])
+                    # front fork
+                    pygame.draw.line(surface, DGRY,
+                        (int(x + 10*dm), int(y - 1)),
+                        (int(x + 13*dm), int(y +  9)), 2)
+                    pygame.draw.line(surface, BLK,
+                        (int(x + 10*dm), int(y - 1)),
+                        (int(x + 13*dm), int(y +  9)), 1)
+                    # rear mudguard
+                    pygame.draw.arc(surface, dark_b,
+                        pygame.Rect(int(x - 21*dm), int(y + 2), 12, 10),
+                        math.pi * 0.2, math.pi * 0.9, 3)
 
-                    pygame.draw.ellipse(surface, (30,30,30), (self.x - 12*dm, self.y - 12, 18, 6))
-                    lx = int(self.x + 18*dm)
-                    pygame.draw.polygon(surface, (255, 255, 180), [
-                        (lx, int(self.y - 3)),
-                        (lx + 4*dm, int(self.y)),
-                        (lx, int(self.y + 3)),
+                    # seat
+                    px(surface, SEAT, [
+                        (x -  9*dm, y - 12),
+                        (x -  1*dm, y - 12),
+                        (x +  2*dm, y -  9),
+                        (x -  8*dm, y -  9),
                     ])
-                    ex = int(self.x - 20*dm)
-                    pygame.draw.rect(surface, (70,70,70), (ex - 4 if dm==1 else ex, int(self.y+7), 7, 4))
-                    if random.random() > 0.3:
-                        fcolor = (255, random.randint(80, 180), 0)
-                        pygame.draw.circle(surface, fcolor,
-                                           (ex - 7*dm, int(self.y+9)), random.randint(3,6))
+                    px(surface, SEAT_L, [
+                        (x -  8*dm, y - 11),
+                        (x -  2*dm, y - 11),
+                        (x -  1*dm, y - 10),
+                        (x -  8*dm, y - 10),
+                    ])
+
+                    # windshield
+                    px(surface, (160, 220, 255), [
+                        (x +  3*dm, y - 10),
+                        (x +  7*dm, y -  9),
+                        (x +  8*dm, y -  5),
+                        (x +  4*dm, y -  5),
+                    ])
+                    # windshield shine
+                    px(surface, (210, 240, 255), [
+                        (x +  4*dm, y -  9),
+                        (x +  6*dm, y -  9),
+                        (x +  6*dm, y -  7),
+                        (x +  4*dm, y -  7),
+                    ])
+
+                    # headlight
+                    lx, ly = int(x + 14*dm), int(y - 2)
+                    circle_px(surface, (255, 255, 180), lx, ly, 4)
+                    circle_px(surface, (255, 255, 100), lx, ly, 2)
+                    pygame.draw.circle(surface, WHITE, (lx, ly), 1)
+
+                    # exhaust pipe
+                    ex, ey = int(x - 15*dm), int(y + 8)
+                    pygame.draw.rect(surface, GRY,  (ex - (5 if dm==1 else 0), ey, 7, 3))
+                    pygame.draw.rect(surface, BLK,  (ex - (5 if dm==1 else 0), ey, 7, 3), 1)
+                    pygame.draw.rect(surface, LGRY, (ex - (5 if dm==1 else 0), ey, 7, 1))
+                    if random.random() > 0.55:
+                        for i in range(2):
+                            pygame.draw.circle(surface, (180, 180, 180),
+                                (ex - (6+i)*dm + random.randint(-1,1),
+                                 ey + 1 + random.randint(0, 1)),
+                                random.randint(1, 3))
+
+                    # handlebar
+                    hbx = int(x + 8*dm)
+                    pygame.draw.line(surface, DGRY, (hbx, int(y - 9)), (hbx, int(y - 12)), 2)
+                    pygame.draw.line(surface, LGRY, (hbx - dm, int(y - 11)),
+                                     (hbx + 2*dm, int(y - 11)), 2)
+                    pygame.draw.line(surface, BLK,  (hbx - dm, int(y - 11)),
+                                     (hbx + 2*dm, int(y - 11)), 1)
+
+                else:  # SPORT BIKE
+                    # ── SPORT BIKE SIDE VIEW ──
+                    # rear wheel (bigger)
+                    wheel(surface, x - 14*dm, y + 10, r=10)
+                    # front wheel
+                    wheel(surface, x + 14*dm, y + 10, r=10)
+
+                    # swingarm
+                    pygame.draw.line(surface, DGRY,
+                        (int(x - 14*dm), int(y + 4)),
+                        (int(x - 2*dm),  int(y + 6)), 3)
+                    pygame.draw.line(surface, BLK,
+                        (int(x - 14*dm), int(y + 4)),
+                        (int(x - 2*dm),  int(y + 6)), 1)
+
+                    # lower fairing
+                    px(surface, shadow_b, [
+                        (x - 17*dm, y +  8),
+                        (x -  6*dm, y +  0),
+                        (x + 10*dm, y +  0),
+                        (x + 17*dm, y +  5),
+                        (x + 14*dm, y + 10),
+                        (x - 14*dm, y + 10),
+                    ])
+                    # upper fairing
+                    px(surface, b_color, [
+                        (x -  6*dm, y +  0),
+                        (x -  4*dm, y - 11),
+                        (x +  4*dm, y - 13),
+                        (x +  9*dm, y - 12),
+                        (x + 14*dm, y -  5),
+                        (x + 10*dm, y +  0),
+                    ])
+                    # fairing highlight
+                    px(surface, light_b, [
+                        (x -  2*dm, y - 10),
+                        (x +  4*dm, y - 12),
+                        (x +  8*dm, y -  8),
+                        (x +  6*dm, y -  5),
+                        (x +  1*dm, y -  6),
+                    ])
+                    # belly pan
+                    px(surface, dark_b, [
+                        (x -  5*dm, y +  0),
+                        (x + 10*dm, y +  0),
+                        (x + 10*dm, y +  3),
+                        (x -  5*dm, y +  3),
+                    ])
+
+                    # front fork
+                    pygame.draw.line(surface, CHROME,
+                        (int(x + 11*dm), int(y - 3)),
+                        (int(x + 14*dm), int(y + 8)), 3)
+                    pygame.draw.line(surface, BLK,
+                        (int(x + 11*dm), int(y - 3)),
+                        (int(x + 14*dm), int(y + 8)), 1)
+                    pygame.draw.line(surface, WHITE,
+                        (int(x + 11*dm), int(y - 2)),
+                        (int(x + 12*dm), int(y + 4)), 1)
+
+                    # seat
+                    px(surface, SEAT, [
+                        (x -  6*dm, y - 12),
+                        (x +  2*dm, y - 14),
+                        (x +  6*dm, y - 13),
+                        (x +  4*dm, y - 10),
+                        (x -  5*dm, y - 10),
+                    ])
+                    px(surface, SEAT_L, [
+                        (x -  5*dm, y - 13),
+                        (x +  1*dm, y - 13),
+                        (x +  3*dm, y - 12),
+                        (x -  4*dm, y - 11),
+                    ])
+
+                    # cockpit / windshield
+                    px(surface, (80, 200, 255), [
+                        (x -  1*dm, y - 12),
+                        (x +  4*dm, y - 13),
+                        (x +  7*dm, y -  9),
+                        (x +  3*dm, y -  8),
+                    ])
+                    px(surface, (180, 230, 255), [
+                        (x +  0*dm, y - 11),
+                        (x +  3*dm, y - 12),
+                        (x +  5*dm, y -  9),
+                        (x +  2*dm, y -  9),
+                    ])
+
+                    # racing stripes
+                    px(surface, WHITE, [
+                        (x -  4*dm, y +  1),
+                        (x + 10*dm, y -  3),
+                        (x + 10*dm, y -  1),
+                        (x -  4*dm, y +  3),
+                    ])
+                    px(surface, (255, 255, 0), [
+                        (x -  4*dm, y +  3),
+                        (x + 10*dm, y -  1),
+                        (x + 10*dm, y +  1),
+                        (x -  4*dm, y +  5),
+                    ])
+
+                    # headlight (angular)
+                    px(surface, (255, 255, 180), [
+                        (x + 15*dm, y - 4),
+                        (x + 18*dm, y - 1),
+                        (x + 18*dm, y + 2),
+                        (x + 15*dm, y + 2),
+                    ])
+                    px(surface, WHITE, [
+                        (x + 16*dm, y - 3),
+                        (x + 17*dm, y - 1),
+                        (x + 17*dm, y + 1),
+                        (x + 16*dm, y + 1),
+                    ])
+
+                    # exhaust (twin pipes)
+                    for pipe_y in [y + 6, y + 8]:
+                        ex = int(x - 16*dm)
+                        pygame.draw.rect(surface, GRY,
+                            (ex - (6 if dm==1 else 0), int(pipe_y), 8, 2))
+                        pygame.draw.rect(surface, BLK,
+                            (ex - (6 if dm==1 else 0), int(pipe_y), 8, 2), 1)
+                        pygame.draw.line(surface, LGRY,
+                            (ex - (6 if dm==1 else 0), int(pipe_y)),
+                            (ex - (6 if dm==1 else 0) + 8, int(pipe_y)), 1)
+                    if random.random() > 0.25:
+                        for i in range(3):
+                            fcolor = (255, random.randint(120, 220), 0)
+                            pygame.draw.circle(surface, fcolor,
+                                (int(x - 17*dm) + random.randint(-1,1),
+                                 int(y + 7)     + random.randint(-1,1)),
+                                random.randint(2, 5))
+                        pygame.draw.circle(surface, (255, 255, 150),
+                            (int(x - 17*dm), int(y + 7)), 2)
+
+                    # handlebar
+                    hbx = int(x + 5*dm)
+                    pygame.draw.line(surface, DGRY,  (hbx, int(y-13)), (hbx, int(y-16)), 2)
+                    pygame.draw.line(surface, LGRY,  (hbx-dm, int(y-15)), (hbx+3*dm, int(y-15)), 3)
+                    pygame.draw.line(surface, BLK,   (hbx-dm, int(y-15)), (hbx+3*dm, int(y-15)), 1)
+
             else:
+                # ── TOP-DOWN VIEW ──
                 dm = 1 if draw_angle == 90 else -1
+
                 if ps.equipped_bike == "VESPA":
-                    pygame.draw.ellipse(surface, b_color, (int(self.x)-13, int(self.y)-8, 26, 16))
-                    pygame.draw.ellipse(surface, wheel_glow, (int(self.x)-13, int(self.y)-8, 26, 16), 1)
-                    pygame.draw.circle(surface, (200,200,200), (int(self.x)-11, int(self.y)-12), 4)
-                    pygame.draw.circle(surface, (200,200,200), (int(self.x)+11, int(self.y)-12), 4)
-                    pygame.draw.circle(surface, WHITE, (int(self.x), int(self.y - 6*dm)), 5)
-                else:
-                    pts = [
-                        (self.x,      self.y - 17*dm),
-                        (self.x - 12, self.y +  3*dm),
-                        (self.x -  6, self.y + 12*dm),
-                        (self.x +  6, self.y + 12*dm),
-                        (self.x + 12, self.y +  3*dm),
-                    ]
-                    pygame.draw.polygon(surface, b_color, pts)
-                    pygame.draw.polygon(surface, (100,220,255), [
-                        (self.x, self.y - 15*dm),
-                        (self.x - 6, self.y - 2*dm),
-                        (self.x + 6, self.y - 2*dm),
+                    # shadow
+                    shadow = pygame.Surface((32, 20), pygame.SRCALPHA)
+                    pygame.draw.ellipse(shadow, (0,0,0,50), (0,0,32,20))
+                    surface.blit(shadow, (int(x)-16, int(y)-6))
+                    # body
+                    px(surface, dark_b, [
+                        (x,      y - 12*dm),
+                        (x - 10, y -  4*dm),
+                        (x - 9,  y +  8*dm),
+                        (x + 9,  y +  8*dm),
+                        (x + 10, y -  4*dm),
                     ])
-                    pygame.draw.polygon(surface, wheel_glow, pts, 1)
+                    px(surface, b_color, [
+                        (x,      y - 10*dm),
+                        (x -  8, y -  3*dm),
+                        (x -  7, y +  6*dm),
+                        (x +  7, y +  6*dm),
+                        (x +  8, y -  3*dm),
+                    ])
+                    px(surface, light_b, [
+                        (x - 3, y -  9*dm),
+                        (x + 3, y -  9*dm),
+                        (x + 4, y -  4*dm),
+                        (x - 4, y -  4*dm),
+                    ])
+                    # seat
+                    px(surface, SEAT, [
+                        (x - 5, y +  1*dm),
+                        (x + 5, y +  1*dm),
+                        (x + 4, y +  6*dm),
+                        (x - 4, y +  6*dm),
+                    ])
+                    px(surface, SEAT_L, [
+                        (x - 4, y +  2*dm),
+                        (x + 4, y +  2*dm),
+                        (x + 3, y +  4*dm),
+                        (x - 3, y +  4*dm),
+                    ])
+                    # front wheel
+                    pygame.draw.ellipse(surface, (15,15,15),
+                        (int(x)-5, int(y - 14*dm)-3, 10, 6))
+                    pygame.draw.ellipse(surface, (35,35,35),
+                        (int(x)-4, int(y - 14*dm)-2, 8,  4))
+                    pygame.draw.ellipse(surface, b_color,
+                        (int(x)-3, int(y - 14*dm)-1, 6,  3))
+                    pygame.draw.ellipse(surface, (15,15,15),
+                        (int(x)-5, int(y + 10*dm)-3, 10, 6))
+                    pygame.draw.ellipse(surface, (35,35,35),
+                        (int(x)-4, int(y + 10*dm)-2, 8,  4))
+                    pygame.draw.ellipse(surface, b_color,
+                        (int(x)-3, int(y + 10*dm)-1, 6,  3))
+                    # headlight
+                    circle_px(surface, (255,255,180), x, y - 13*dm, 3)
+                    pygame.draw.circle(surface, WHITE, (int(x), int(y - 13*dm)), 1)
+
+                else:  # SPORT top-down
+                    shadow = pygame.Surface((32, 22), pygame.SRCALPHA)
+                    pygame.draw.ellipse(shadow, (0,0,0,60), (0,0,32,22))
+                    surface.blit(shadow, (int(x)-16, int(y)-7))
+                    # lower body
+                    px(surface, shadow_b, [
+                        (x,      y - 15*dm),
+                        (x - 11, y -  3*dm),
+                        (x - 10, y +  9*dm),
+                        (x + 10, y +  9*dm),
+                        (x + 11, y -  3*dm),
+                    ])
+                    # upper fairing
+                    px(surface, b_color, [
+                        (x,      y - 13*dm),
+                        (x -  9, y -  2*dm),
+                        (x -  8, y +  7*dm),
+                        (x +  8, y +  7*dm),
+                        (x +  9, y -  2*dm),
+                    ])
+                    # highlight
+                    px(surface, light_b, [
+                        (x - 3, y - 11*dm),
+                        (x + 3, y - 11*dm),
+                        (x + 4, y -  5*dm),
+                        (x - 4, y -  5*dm),
+                    ])
+                    # racing stripes
+                    px(surface, WHITE, [
+                        (x - 2, y -  2*dm),
+                        (x + 2, y -  2*dm),
+                        (x + 2, y +  5*dm),
+                        (x - 2, y +  5*dm),
+                    ])
+                    px(surface, (255,255,0), [
+                        (x - 4, y -  1*dm),
+                        (x - 2, y -  1*dm),
+                        (x - 2, y +  5*dm),
+                        (x - 4, y +  5*dm),
+                    ])
+                    px(surface, (255,255,0), [
+                        (x + 2, y -  1*dm),
+                        (x + 4, y -  1*dm),
+                        (x + 4, y +  5*dm),
+                        (x + 2, y +  5*dm),
+                    ])
+                    # seat
+                    px(surface, SEAT, [
+                        (x - 4, y +  2*dm),
+                        (x + 4, y +  2*dm),
+                        (x + 3, y +  7*dm),
+                        (x - 3, y +  7*dm),
+                    ])
+                    # cockpit
+                    px(surface, (80,200,255), [
+                        (x - 4, y - 12*dm),
+                        (x + 4, y - 12*dm),
+                        (x + 3, y -  8*dm),
+                        (x - 3, y -  8*dm),
+                    ])
+                    px(surface, (200,235,255), [
+                        (x - 2, y - 11*dm),
+                        (x + 2, y - 11*dm),
+                        (x + 2, y -  9*dm),
+                        (x - 2, y -  9*dm),
+                    ])
+                    # wheels
+                    for wy_off in [-14, 10]:
+                        pygame.draw.ellipse(surface, (15,15,15),
+                            (int(x)-6, int(y + wy_off*dm)-3, 12, 6))
+                        pygame.draw.ellipse(surface, (35,35,35),
+                            (int(x)-5, int(y + wy_off*dm)-2, 10, 4))
+                        pygame.draw.ellipse(surface, b_color,
+                            (int(x)-3, int(y + wy_off*dm)-1, 6,  3))
+                    # headlight
+                    px(surface, (255,255,180),
+                       [(x-3, y-14*dm),(x+3, y-14*dm),(x+3, y-11*dm),(x-3, y-11*dm)])
+                    pygame.draw.line(surface, WHITE,
+                        (int(x)-2, int(y-13*dm)), (int(x)+2, int(y-13*dm)), 1)
 
         # DRAW PACMAN
         current_color = YELLOW
