@@ -3,7 +3,7 @@
   <img src="https://raw.githubusercontent.com/abozanona/pacman-contribution-graph/main/assets/gifs/red_flip.gif" width="100" />
 </p>
 
-> 🎮 Tái hiện trò chơi Pacman huyền thoại với góc nhìn hiện đại — nơi 4 con Ghost được trang bị các thuật toán di chuyển riêng biệt (A*, BFS, Dijkstra và DFS) tạo ra những thách thức đa dạng và khó lường. Người chơi không chỉ đơn giản là ăn dot mà còn có thể ghé Black Market để trang bị vũ khí, lên xe phóng nhanh hơn, săn lùng bonus item và tích lũy điểm cao.
+> 🎮 Tái hiện trò chơi Pacman huyền thoại với các tính năng mới — nơi 4 con Ghost được trang bị các thuật toán di chuyển riêng biệt (A*, BFS, Dijkstra và DFS) tạo ra những thách thức đa dạng và khó lường. Người chơi không chỉ đơn giản là ăn dot mà còn có thể ghé Black Market để trang bị vũ khí, lên xe phóng nhanh hơn, săn lùng bonus item và tích lũy điểm cao.
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.13-blue?style=for-the-badge&logo=python" />
   <img src="https://img.shields.io/badge/Pygame-2.0+-green?style=for-the-badge&logo=pygame" />
@@ -56,8 +56,8 @@ python main.py
 | Ghost | Màu | Thuật toán | Đặc điểm |
 |:---:|:---:|:---:|:---|
 | 🔴 Blinky | Đỏ         | A* Search | Thông minh nhất, luôn tìm đường ngắn nhất đến Pacman |
-| 🩷 Pinky  | Hồng       | BFS       | Đảm bảo đường ngắn nhất, dễ đoán hơn                 |
-| 🔵 Inky   | Xanh dương | Dijkstra  | Tiếp cận từ phía sau Pacman                          |
+| 🩷 Pinky  | Hồng       | BFS       | Tiếp cận 4 ô phía trước Pacman                       |
+| 🔵 Inky   | Xanh dương | Dijkstra  | Tiếp cận 2 ô phía sau Pacman                         |
 | 🟠 Clyde  | Cam        | DFS       | Khó đoán, đi lòng vòng, ẩn góc khi gần               |
 
 ---
