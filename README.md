@@ -1,5 +1,4 @@
 # 👾 Pacman Arcade
-
 <p align="center">
   <img src="https://raw.githubusercontent.com/abozanona/pacman-contribution-graph/main/assets/gifs/red_flip.gif" width="100" />
 </p>
@@ -14,12 +13,42 @@
 
 ---
 
-## 🚀 Cài đặt & Chạy game
+## 📋 Yêu cầu hệ thống
 
+- Python 3.10+
+- Pygame 2.0+
+
+---
+
+## ⚙️ Cài đặt & Chạy game
+
+**1. Clone repo về máy:**
+```bash
+git clone https://github.com/ngocthuan-uit/pacman-project.git
+cd pacman-project
+```
+
+**2. Cài thư viện:**
 ```bash
 pip install -r requirements.txt
+```
+
+**3. Chạy game:**
+```bash
 python main.py
 ```
+
+---
+
+## 🎮 Điều khiển
+
+| Phím | Chức năng |
+|:---:|:---|
+| ← → ↑ ↓ hoặc W A S D | Di chuyển Pacman |
+| S | Mở Shop (Black Market) từ màn hình Start |
+| Q / E / R / T | Trang bị vũ khí (Dagger / Fire / Ice / Axe) |
+| Z / X | Trang bị xe (Vespa / Sport Bike) |
+| ESC | Quay về màn hình Start |
 
 ---
 
@@ -40,15 +69,16 @@ python main.py
 - 3 màn chơi với bản đồ và màu sắc khác nhau
 - Ăn 80% dot để qua màn
 - Power Pellet khiến ma hoảng sợ
+- Lưu điểm cao nhất (High Score)
 
 ### 🛒 Black Market (Shop)
+
 | Vũ khí | Giá | Hiệu ứng |
 |:---|:---:|:---|
 | 🗡️ Silver Dagger | 50  | Tăng tốc độ khi powered |
 | 🔥 Fire Sword    | 150 | x2 điểm và coin         |
 | ❄️ Ice Sword     | 300 | Làm chậm ghost khi sợ   |
 | 🪓 Battle Axe    | 500 | +1.5s thời gian power   |
-
 
 | Xe | Giá | Hiệu ứng |
 |:---|:---:|:---|
@@ -60,7 +90,7 @@ Cherry · Orange · Apple · Melon · ⭐ Star
 
 ---
 
-### 📁 Cấu trúc project
+## 📁 Cấu trúc project
 
 * **algorithms/**: A*, BFS, Dijkstra, DFS
 * **assets/**: Âm thanh
