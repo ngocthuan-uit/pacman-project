@@ -56,9 +56,9 @@ python main.py
 | Ghost | Màu | Thuật toán | Đặc điểm |
 |:---:|:---:|:---:|:---|
 | 🔴 Blinky | Đỏ         | A* Search | Thông minh nhất, luôn tìm đường ngắn nhất đến Pacman |
-| 🩷 Pinky  | Hồng       | BFS       | Tiếp cận 4 ô phía trước Pacman                       |
-| 🔵 Inky   | Xanh dương | Dijkstra  | Tiếp cận 2 ô phía sau Pacman                         |
-| 🟠 Clyde  | Cam        | DFS       | Khó đoán, đi lòng vòng, ẩn góc khi gần               |
+| 🩷 Pinky  | Hồng       | BFS       | Đón đầu mục tiêu bằng cách nhắm tới 4 ô phía trước Pacman        |
+| 🔵 Inky   | Xanh dương | Dijkstra  | Hỗ trợ bao vây, nhắm vào 2 ô phía sau Pacman           |
+| 🟠 Clyde  | Cam        | DFS       | Di chuyển khó đoán, thích đi lòng vòng và ẩn nấp góc khuất            |
 
 ---
 
