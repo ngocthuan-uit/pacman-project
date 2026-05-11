@@ -9,13 +9,11 @@ import systems.player_state as ps
 
 class Pacman(Entity):
     """Player character with mouth animation, directional eye, and full equipment support.
-
     Pacman's speed each frame is:
         speed = base_speed + bike_bonus + weapon_bonus
-    where bike_bonus is 0.5 (Vespa) or 0.75 (Sport), and weapon_bonus
-    is 0.5 for the Dagger while powered.
-
-    Attributes:
+    """
+    def __init__(self, c, r):
+        """
         mouth_open (float): Oscillating angle value (0-1.5) driving the mouth animation.
         mouth_change (int): +1 while mouth is opening, -1 while closing.
         eye_offset_x (int): Horizontal eye offset relative to body center.
@@ -23,8 +21,7 @@ class Pacman(Entity):
         last_face_dir (int): Last non-zero facing angle in degrees
                              (0=right, 180=left, 90=up, -90=down).
                              Used to keep the mouth pointing the right way when stationary.
-    """
-    def __init__(self, c, r):
+        """
         super().__init__(c, r, speed=2)
         self.mouth_open   = 0
         self.mouth_change = 1
@@ -34,16 +31,11 @@ class Pacman(Entity):
 
     def update(self, game_map, is_powered):
         """Recalculate speed, animate the mouth, and move Pacman one frame.
-
         Speed bonuses from bikes and the Dagger weapon are recalculated
         every frame so equip/unequip changes take effect immediately.
         When Pacman reaches a tile center the queued direction (next_dir)
         is applied if the resulting tile is not a wall; the current direction
         is cancelled if the next tile ahead is a wall.
-
-        Args:
-            game_map (Map): Used for wall checks.
-            is_powered (bool): True while a power pellet effect is active.
         """
         # EQUIPMENTS AND VEHICLES
         bike_bonus = 0
@@ -92,7 +84,6 @@ class Pacman(Entity):
 
     def draw(self, surface, is_powered=False):
         """Render Pacman together with any equipped bike and weapon.
-
         Drawing order (back to front):
             1. Bike wheels and body (if a bike is equipped).
             2. Power glow ring (if powered).
@@ -102,10 +93,6 @@ class Pacman(Entity):
                - DAGGER : short thrusting blade that pulses forward.
                - FIRE/ICE: long sweeping sword with motion-blur trail circles.
                - AXE     : heavy blade swinging in a wide arc.
-
-        Args:
-            surface (pygame.Surface): Render target.
-            is_powered (bool): Controls body colour and whether the weapon is drawn.
         """
         draw_angle = 0
         if   self.dir_x ==  1: draw_angle = 0
@@ -115,7 +102,6 @@ class Pacman(Entity):
         else:
             d = {0: 0, 180: 180, 90: 90, -90: 270}
             draw_angle = d.get(self.last_face_dir, 0)
-
         # DRAW VEHICLES
         time_ms = pygame.time.get_ticks()
         if ps.equipped_bike:
