@@ -5,11 +5,8 @@ from entities.ghost import Ghost
 
 class AStarGhost(Ghost):
     """Ghost that chases Pacman using the A* search algorithm.
-
     A* combines the actual path cost g(n) with a heuristic estimate h(n)
-    to focus the search toward the goal, making it faster than BFS or
-    Dijkstra on large grids while still guaranteeing the optimal path.
-
+    to focus the search toward the goal.
     Data structures:
         open_set  (heapq min-heap): Nodes ordered by f = g + h.
         g_score   (dict): Best known cost from start to each visited node.
@@ -23,7 +20,6 @@ class AStarGhost(Ghost):
     """
     def get_path(self, game_map, target_c, target_r):
         """Return the first step of the A*-optimal path to (target_c, target_r).
-
         Reconstructs the full path via came_from and returns only the
         direction of the first step from the starting tile.
         Falls back to random_move if start equals goal or no path exists.
