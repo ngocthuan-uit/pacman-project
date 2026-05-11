@@ -23,11 +23,11 @@ BONUS_ITEMS_DATA = [
 
 class BonusItem:
     """A time-limited collectible fruit or star that appears on a random free tile.
-
     Lifetime is fixed at FPS * 10 frames (10 seconds at 60 FPS).
     The item blinks rapidly during the last 3 seconds to warn the player.
-
-    Attributes:
+    """
+    def __init__(self, c, r, data):
+        """Place the item at grid cell (c, r) and attach its data dict.
         c (int): Grid column.
         r (int): Grid row.
         x (float): Pixel x of the sprite center (c * TILE_SIZE + TILE_SIZE // 2).
@@ -35,14 +35,6 @@ class BonusItem:
         data (dict): Entry from BONUS_ITEMS_DATA (name, color, points, coins).
         lifetime (int): Total frames the item exists before auto-removal.
         age (int): Frames elapsed since the item was created.
-    """
-    def __init__(self, c, r, data):
-        """Place the item at grid cell (c, r) and attach its data dict.
-
-        Args:
-            c (int): Grid column.
-            r (int): Grid row.
-            data (dict): One entry from BONUS_ITEMS_DATA.
         """
         self.c = c
         self.r = r
@@ -58,30 +50,21 @@ class BonusItem:
     @property
     def dead(self):
         """True when the item has reached its lifetime and should be removed.
-
-        Returns:
-            bool: age >= lifetime.
         """
         return self.age >= self.lifetime
 
     def draw(self, surface):
         """Render the item sprite with a bobbing motion and an expiry blink.
-
         Position bobs vertically using math.sin(t * 4) * 3, creating a gentle
         floating effect. During the final 3 seconds (FPS * 3 frames) the sprite
         alternates visible/invisible every 6 frames.
-
         Each item type has a hand-drawn sprite:
             Cherry : two red circles with green stalks and pink highlights.
             Orange : layered circles with an arc peel detail and a green stalk.
             Apple  : hexagonal polygon with a brown stem and a yellow shine dot.
             Melon  : horizontal ellipse with three vertical stripe lines.
             Star   : 5-point star (10-vertex polygon) with an orange outline.
-
         A small name label is drawn below each sprite in the item's colour.
-
-        Args:
-            surface (pygame.Surface): Render target.
         """
         if self.age > self.lifetime - FPS * 3:
             if (self.age // 6) % 2 == 1:
