@@ -10,8 +10,10 @@ class Entity:
         (c, r). Direction is applied in pixels every frame. When the entity
         reaches the center of a tile (is_at_center), it may change direction
         and its grid coordinates are refreshed.
-
-    Attributes:
+    """
+    
+    def __init__(self, c, r, speed):
+        """
         start_c (int): Spawn column; used by reset_position and Ghost.bfs_to_home.
         start_r (int): Spawn row.
         base_speed (float): Default pixels-per-frame; restored after boosts.
@@ -24,17 +26,6 @@ class Entity:
         dir_y (int): Active vertical direction  (-1 = up,   0 = still, 1 = down).
         next_dir_x (int): Queued horizontal direction, applied when a tile center is reached.
         next_dir_y (int): Queued vertical direction.
-    """
-    
-    def __init__(self, c, r, speed):
-        """Initialise the entity and place it at grid position (c, r).
-
-        Calls reset_position() to set pixel coordinates and clear direction.
-
-        Args:
-            c (int): Starting column.
-            r (int): Starting row.
-            speed (float): Movement speed in pixels per frame.
         """
         self.start_c = c
         self.start_r = r
@@ -44,7 +35,6 @@ class Entity:
     
     def reset_position(self):
         """Teleport the entity back to its spawn tile and clear all movement.
-
         Sets (x, y) to the pixel center of (start_c, start_r),
         resets (c, r), and zeroes both dir and next_dir vectors.
         """
@@ -57,13 +47,10 @@ class Entity:
 
     def is_at_center(self, move_speed = None):
         """Return True if the entity is within move_speed pixels of its tile center.
-
         Used to decide when a direction change or grid-coordinate update is safe.
         Falls back to self.speed when move_speed is not provided.
-
         Args:
             move_speed (float | None): Threshold distance. Defaults to self.speed.
-
         Returns:
             bool: True if both horizontal and vertical offsets are below the threshold.
         """
@@ -84,7 +71,6 @@ class Entity:
     
     def wrap_around(self):
         """Handle horizontal tunnel teleportation at the map edges.
-
         When x drops below 0 the entity appears at the right edge, and vice versa.
         Also refreshes (c, r) from the current pixel position.
         """
