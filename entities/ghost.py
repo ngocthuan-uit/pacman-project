@@ -10,18 +10,18 @@ import math
 
 class Ghost(Entity):
     """Represents one ghost with frightened, dead, and normal AI states.
-
     Subclasses override get_path() to implement different search algorithms.
     The base class handles state transitions, speed selection, and rendering;
     subclasses only need to provide pathfinding logic.
-
     State machine:
         normal     → is_frightened=False, is_dead=False  (chases Pacman via get_path)
         frightened → is_frightened=True,  is_dead=False  (wanders randomly at low speed)
         dead       → is_dead=True                        (rushes home via bfs_to_home at speed 3.5;
                                                            reverts to normal on arrival)
+    """
 
-    Attributes:
+    def __init__(self, c, r, color):
+        """
         color (tuple[int,int,int]): Body colour in normal state.
         is_frightened (bool): Set True when Pacman eats a power pellet;
             cleared when frightened_timer reaches zero or ghost is eaten.
@@ -29,9 +29,7 @@ class Ghost(Entity):
             cleared automatically when the ghost reaches its spawn tile.
         start_c (int): Spawn column; doubles as the home target for bfs_to_home.
         start_r (int): Spawn row.
-    """
-
-    def __init__(self, c, r, color):
+        """
         super().__init__(c, r, speed=2)
         self.color         = color
         self.is_frightened = False
@@ -41,25 +39,15 @@ class Ghost(Entity):
     
     def update(self, game_map, target_c, target_r, frightened_timer):
         """Advance the ghost by one frame.
-
         Speed selection:
             is_dead      → 3.5 px/frame (always, regardless of equipment)
             is_frightened → 0.5 if ICE sword equipped, else 1.0
             normal        → self.speed (set by Game based on level)
-
         Direction is only re-evaluated when the ghost reaches a tile center.
         The chosen (dx, dy) is applied only if the resulting cell is not a wall;
         otherwise the ghost continues in its current direction, or picks a random
         valid direction if it has stopped completely.
-
-        Args:
-            game_map (Map): Used for wall checks and neighbor queries.
-            target_c (int): Target column (Pacman or strategic position).
-            target_r (int): Target row.
-            frightened_timer (int): Remaining frightened frames (unused here,
-                passed through from Game for subclass use if needed).
         """
-        
         if self.is_dead:
             current_speed = 3.5
         elif self.is_frightened:
@@ -102,12 +90,6 @@ class Ghost(Entity):
         geometrically shortest route even if that means reversing direction.
 
         Returns (0, 0) when the ghost is already at the spawn tile or no path exists.
-
-        Args:
-            game_map (Map): Used to check walls.
-
-        Returns:
-            tuple[int,int]: (dx, dy) direction to move this frame.
         """
         start = (self.c, self.r)
         goal  = (self.start_c, self.start_r)
@@ -145,18 +127,7 @@ class Ghost(Entity):
         unnecessary U-turns during normal play.
         Fallback pass: if the primary pass yields no results (dead end), all
         four directions are considered regardless of the current heading.
-
         Handles horizontal wrap-around for tunnel tiles at column edges.
-
-        Args:
-            c (int): Column to expand from.
-            r (int): Row to expand from.
-            game_map (Map): Used to check walls.
-
-        Returns:
-            list[tuple[tuple[int,int], tuple[int,int]]]:
-                Each element is ((nc, nr), (dx, dy)) where (nc, nr) is the
-                neighbour position and (dx, dy) is the direction to reach it.
         """
         neighbors = []
         for dx, dy in [(0, -1), (0, 1), (-1, 0), (1, 0)]:
@@ -179,7 +150,6 @@ class Ghost(Entity):
     
     def random_move(self, game_map):
         """Choose a uniformly random valid direction from the current tile.
-
         Uses get_neighbors (so U-turns are still avoided when possible).
         Falls back to the current direction if no neighbours are available.
         """
@@ -195,16 +165,13 @@ class Ghost(Entity):
     
     def draw(self, surface, frightened_timer):
         """Render the ghost sprite appropriate to its current state.
-
         Dead state:
             Draws two floating eyes (white ellipses with blue pupils that
             shift in the direction of travel). No body is drawn.
-
         Frightened state:
             Solid blue body. Flashes between SCARED_COLOR and SCARED_FLASH
             when fewer than 120 frames remain on the frightened timer.
             Sad-face eye dots and a downward arc mouth.
-
         Normal state:
             Coloured body with a soft glow ring, bright arc highlight on the
             dome, an animated wave skirt, and directional pupils.
