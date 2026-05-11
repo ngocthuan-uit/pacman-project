@@ -8,9 +8,7 @@ class BFSGhost(Ghost):
 
     BFS explores tiles in order of increasing hop count, guaranteeing the
     path with the fewest steps on an unweighted grid. It is complete and
-    optimal for uniform-cost movement, though it may explore more nodes
-    than A* because it has no heuristic to guide it.
-
+    optimal for uniform-cost movement.
     Data structures:
         queue    (collections.deque): FIFO frontier of nodes to expand.
         visited  (set): Nodes already added to the queue (prevents re-visits).
@@ -19,7 +17,6 @@ class BFSGhost(Ghost):
     """
     def get_path(self, game_map, target_c, target_r):
         """Return the first step of the shortest path to (target_c, target_r) via BFS.
-
         Reconstructs the path via came_from and returns only the direction
         of the immediate next step from the current tile.
         Falls back to random_move if start equals goal or no path is found.
