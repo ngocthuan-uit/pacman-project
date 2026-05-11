@@ -5,22 +5,12 @@ import os
 
 class SoundManager:
     """Loads WAV files and plays them on dedicated mixer channels.
-
-    Each sound effect is assigned its own channel so effects can overlap
-    without cutting each other off, except for 'die' which intentionally
-    stops all channels to give the death sound exclusive attention.
-
     Channel assignments:
         0 - waka      : looping movement sound; starts when Pacman moves,
                         stops when stationary.
         1 - power     : one-shot played when a power pellet is collected.
         2 - eat_ghost : one-shot played each time a frightened ghost is eaten.
         3 - die       : one-shot played on Pacman death; halts all other audio.
-
-    Sound files are expected at:
-        <project_root>/assets/sounds/<name>.wav
-    Missing files print a warning but do not raise an exception, so the
-    game runs silently if the assets folder is absent.
     """
     def __init__(self):
         
@@ -45,16 +35,11 @@ class SoundManager:
     
     def play(self, name):
         """Play the named sound effect according to its channel policy.
-
         Policies:
             'waka'      – starts looping only if the channel is not already busy.
             'die'       – calls pygame.mixer.stop() then plays once on channel 3.
             everything else – stops the channel first, then plays once.
-
         Does nothing silently if name is not in self.sounds (file was missing).
-
-        Args:
-            name (str): Sound key; one of 'waka', 'power', 'eat_ghost', 'die'.
         """
         if name not in self.sounds:
             return
@@ -71,11 +56,7 @@ class SoundManager:
     
     def stop(self, name):
         """Stop the channel associated with name immediately.
-
         Does nothing if name is not a recognised channel key.
-
-        Args:
-            name (str): Sound key to stop.
         """
         if name in self.channels:
             self.channels[name].stop()
