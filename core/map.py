@@ -9,8 +9,10 @@ class Map:
 
     The grid is a deep copy of the matching ALL_LEVELS entry so that
     eating dots does not corrupt the source data between rounds.
+    """
 
-    Attributes:
+    def __init__(self, level):
+        """
         grid (list[list[int]]): 21 × 28 live tile matrix for this session.
         level_color (tuple[int,int,int]): RGB wall colour for the current level.
         dots (set[tuple[int,int]]): (c, r) pairs of dots not yet eaten.
@@ -18,16 +20,6 @@ class Map:
         total_items (int): Sum of dots and power pellets at level start;
             used by Game to evaluate the 80 % win condition.
         blink_timer (int): Incremented every frame to drive the power-pellet blink animation.
-    """
-
-    def __init__(self, level):
-        """Initialise the map for the given 1-based level number.
-
-        Selects the correct ALL_LEVELS entry via modular indexing so that
-        levels beyond the list length cycle back to the start.
-
-        Args:
-            level (int): 1-based level number.
         """
         idx = (level - 1) % len(ALL_LEVELS)
         self.grid = [row[:] for row in ALL_LEVELS[idx]]
@@ -53,13 +45,9 @@ class Map:
 
     def draw(self, surface):
         """Render walls, dots, and power pellets onto surface each frame.
-
         Walls are drawn with a dark fill and a coloured border.
         Dots are small two-layer squares.
         Power pellets blink every 15 frames and display a soft glow when visible.
-
-        Args:
-            surface (pygame.Surface): The render target.
         """
         self.blink_timer += 1
         lc = self.level_color
@@ -93,15 +81,7 @@ class Map:
         
     def is_wall(self, c, r):
         """Check whether cell (c, r) blocks movement.
-
         Out-of-bounds coordinates return False (treated as open tunnel edges).
-
-        Args:
-            c (int): Column to test.
-            r (int): Row to test.
-
-        Returns:
-            bool: True if the cell contains a wall (value 1).
         """
         if c < 0 or c >= MAP_COLS or r < 0 or r >= MAP_ROWS:
             return False
@@ -109,11 +89,7 @@ class Map:
 
     def get_open_cells(self):
         """Return all walkable grid positions suitable for bonus-item spawning.
-
         Includes cells with value 0 (path) or 2 (open corridor).
-
-        Returns:
-            list[tuple[int,int]]: List of (c, r) tuples.
         """
         cells = []
         for r in range(MAP_ROWS):
