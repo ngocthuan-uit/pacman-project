@@ -4,20 +4,13 @@ import pygame
 from core.constants import DOT_COLOR, YELLOW
 
 """Particle system providing visual feedback for dot collection, bursts, and death."""
-
 class Particle:
     """A single screen-space particle driven by velocity, gravity, and fade-out.
-
-    Physics applied each frame:
-        vy  += 0.18   (downward gravity)
-        vx  *= 0.95   (horizontal air friction)
-        x   += vx
-        y   += vy
-
     Visual fade: both radius and brightness scale linearly with
     (1 - age / lifetime), so the particle shrinks and darkens as it ages.
-
-    Attributes:
+    """
+    def __init__(self, x, y, color, vx = None, vy = None, size = None, lifetime = None):
+        """Create a particle at pixel position (x, y).
         x (float): Current horizontal pixel position.
         y (float): Current vertical pixel position.
         color (tuple[int,int,int]): Base RGB colour before fade is applied.
@@ -26,24 +19,6 @@ class Particle:
         size (int): Starting radius in pixels.
         lifetime (int): Total frames the particle lives.
         age (int): Frames elapsed since creation.
-    """
-    def __init__(self, x, y, color, vx = None, vy = None, size = None, lifetime = None):
-        """Create a particle at pixel position (x, y).
-
-        Any argument left as None is replaced with a random default:
-            vx       : uniform(-3, 3)
-            vy       : uniform(-4, -0.5)   (initially moving upward)
-            size     : randint(2, 5)
-            lifetime : randint(20, 45)
-
-        Args:
-            x (float): Spawn x position.
-            y (float): Spawn y position.
-            color (tuple): Base RGB colour.
-            vx (float | None): Initial horizontal velocity.
-            vy (float | None): Initial vertical velocity.
-            size (int | None): Starting radius.
-            lifetime (int | None): Frame count before removal.
         """
         self.x = x
         self.y = y
@@ -64,13 +39,9 @@ class Particle:
 
     def draw(self, surface):
         """Render a circle whose size and brightness fade with age.
-
         Radius   = max(1, int(size * ratio))
         Colour   = base_color * (0.4 + 0.6 * ratio)   (never fully black)
         where ratio = max(0, 1 - age / lifetime).
-
-        Args:
-            surface (pygame.Surface): Render target.
         """
         ratio = max(0.0, 1 - self.age / self.lifetime)
         r = max(1, int(self.size * ratio))
@@ -104,11 +75,9 @@ def spawn_dot_particles(plist, x, y, count = 5):
 
 def spawn_burst(plist, x, y, colors, count = 20):
     """Append an omnidirectional explosion of particles at (x, y).
-
     Each particle is launched at a random angle with a random speed between
     2 and 6 px/frame, creating a circular spray effect. Used for power pellet
     collection and ghost kills.
-
     Args:
         plist (list[Particle]): Active particle list to append to.
         x (float): Burst origin x in pixels.
@@ -129,10 +98,8 @@ def spawn_burst(plist, x, y, colors, count = 20):
 
 def spawn_death_particles(plist, x, y, count=30):
     """Append a large YELLOW burst at (x, y) when Pacman is killed.
-
     Larger particle sizes (3–8 px) and longer lifetimes (30–70 frames) than
     spawn_burst to emphasise the death moment.
-
     Args:
         plist (list[Particle]): Active particle list to append to.
         x (float): Death position x in pixels.
