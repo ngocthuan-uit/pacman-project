@@ -59,14 +59,14 @@ python main.py
 
 ---
 
-## 🤖 Ghost AI Algorithms
+## 👻 Ghost AI Algorithms
 
 | Ghost | Colour | Algorithm | Behaviour |
-|:---:|:---:|:---:|:---|
-| 🔴 Blinky | Red | A\* Search | Smartest ghost — always finds the shortest path directly to Pacman |
-| 🩷 Pinky | Pink | BFS | Ambushes by targeting 4 tiles ahead of Pacman's current direction |
-| 🔵 Inky | Cyan | Dijkstra | Flanks from behind by targeting 2 tiles behind Pacman |
-| 🟠 Clyde | Orange | DFS | Unpredictable — wanders and retreats to corners when close to Pacman |
+| :--- | :--- | :--- | :--- |
+| 🔴 **Blinky** | Red | A* Search | Smartest ghost — always finds the shortest path directly to Pacman |
+| 💗 **Pinky** | Pink | BFS | Ambushes by targeting 4 tiles ahead of Pacman's current direction |
+| 🔵 **Inky** | Cyan | Dijkstra | Flanks from behind by targeting 2 tiles behind Pacman |
+| 🟠 **Clyde** | Orange | DFS | Unpredictable — wanders and retreats to corners when close to Pacman |
 
 ---
 
