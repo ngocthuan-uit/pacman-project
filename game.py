@@ -8,6 +8,7 @@ from algorithms.astar import AStarGhost
 from algorithms.bfs import BFSGhost
 from algorithms.dijkstra import DijkstraGhost
 from algorithms.dfs import DFSGhost
+from entities.mega_ghost import MegaGhost
 from systems.sound import SoundManager
 from ui.hud import FloatingText
 from systems.highscore import *
@@ -28,7 +29,8 @@ class Game:
         READY_WAIT - 2-second countdown after level/life reset before PLAYING begins.
         PLAYING    - active gameplay; ESC returns to START (saving high score).
         GAMEOVER   - overlay shown when lives reach 0; any key → START.
-        WIN        - overlay shown when ≥ 80 % of items are eaten; any key → START.
+        WIN        - overlay shown when boss defeated (level 3) or ≥ 80% items eaten
+                     (level 1-2); any key → START.
 
     Attributes:
         screen (pygame.Surface): Main display surface.
@@ -45,7 +47,9 @@ class Game:
         particles (list[Particle]): Live particle effects.
         floats (list[FloatingText]): Live floating score notifications.
         equip_hint_timer (int): Frames the equip-change HUD confirmation stays visible.
+        mega_ghost (MegaGhost | None): Boss instance; spawned automatically at level 3 start.
     """
+
     def __init__(self):
         pygame.init()
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -58,32 +62,34 @@ class Game:
         self.font_tiny  = pygame.font.SysFont("Arial", 14, bold=True)
         self.sound      = SoundManager()
 
-        self.level      = 1
-        self.max_level  = 3
-        self.score      = 0
-        self.high_score = load_high_score()
-        self.lives      = 3
-        self.state      = "START"
-        self.frightened_timer = 0
-        self.blink_title      = 0
-        self.floats           = []
-        self.particles        = []
-        self.ghost_combo      = 0
-        self.bonus_items      = []
+        self.level             = 1
+        self.max_level         = 3
+        self.score             = 0
+        self.high_score        = load_high_score()
+        self.lives             = 3
+        self.state             = "START"
+        self.frightened_timer  = 0
+        self.blink_title       = 0
+        self.floats            = []
+        self.particles         = []
+        self.ghost_combo       = 0
+        self.bonus_items       = []
         self.bonus_spawn_timer = 0
-        self.equip_hint_timer = 0
-    
+        self.equip_hint_timer  = 0
+        self.mega_ghost        = None
+
     def _update_high_score(self):
         """Replace high_score with score if score is greater, then persist to disk."""
         if self.score > self.high_score:
             self.high_score = self.score
             save_high_score(self.high_score)
-    
+
     def reset_positions(self):
         """Return Pacman and all ghosts to their spawn tiles and transition to READY_WAIT.
 
         Clears is_frightened on every ghost, resets frightened_timer and
         ghost_combo, and starts a 2-second (FPS * 2 frame) wait timer.
+        Also resets the boss position if it is still alive.
         """
         self.pacman.reset_position()
         for ghost in self.ghosts:
@@ -91,8 +97,13 @@ class Game:
             ghost.is_frightened = False
         self.frightened_timer = 0
         self.ghost_combo      = 0
-        self.state     = "READY_WAIT"
+        self.state      = "READY_WAIT"
         self.wait_timer = FPS * 2
+        if self.mega_ghost and not self.mega_ghost.is_dead:
+            self.mega_ghost.x = self.mega_ghost.start_c * TILE_SIZE + TILE_SIZE // 2
+            self.mega_ghost.y = self.mega_ghost.start_r * TILE_SIZE + TILE_SIZE // 2
+            self.mega_ghost.is_stunned = False
+            self.mega_ghost.stun_timer = 0
 
     def init_level(self):
         """Construct a fresh Map, Pacman, and four ghosts for self.level.
@@ -101,12 +112,13 @@ class Game:
             speed = 2 + (level - 1) * 0.25
 
         Ghost roles and algorithms:
-            AStarGhost    (red,   col 13, row  9) - Blinky; always targets Pacman directly.
-            BFSGhost      (pink,  col 14, row  9) - Pinky;  targets 4 tiles ahead of Pacman.
-            DijkstraGhost (cyan,  col 13, row 10) - Inky;   targets 2 tiles behind Pacman.
-            DFSGhost      (orange,col 14, row 10) - Clyde;  retreats when within 8 tiles.
+            AStarGhost    (red,    col 13, row  9) - Blinky; always targets Pacman directly.
+            BFSGhost      (pink,   col 14, row  9) - Pinky;  targets 4 tiles ahead of Pacman.
+            DijkstraGhost (cyan,   col 13, row 10) - Inky;   targets 2 tiles behind Pacman.
+            DFSGhost      (orange, col 14, row 10) - Clyde;  retreats when within 8 tiles.
 
         Also resets items_eaten, particle/float lists, bonus item state,
+        spawns MegaGhost automatically if level == 3,
         and calls reset_positions() to enter READY_WAIT.
         """
         self.map    = Map(self.level)
@@ -121,12 +133,17 @@ class Game:
         for g in self.ghosts:
             g.base_speed = ghost_speed
             g.speed      = ghost_speed
-        self.items_eaten      = 0
-        self.floats           = []
-        self.particles        = []
-        self.ghost_combo      = 0
-        self.bonus_items      = []
-        self.bonus_spawn_timer = FPS * 8 
+        self.items_eaten       = 0
+        self.floats            = []
+        self.particles         = []
+        self.ghost_combo       = 0
+        self.bonus_items       = []
+        self.bonus_spawn_timer = FPS * 8
+        # LEVEL 3: SPAWN BOSS
+        if self.level == 3:
+            self.mega_ghost = MegaGhost(13, 9)
+        else:
+            self.mega_ghost = None
         self.reset_positions()
 
     def add_float(self, text, x, y, color=WHITE, size=22):
@@ -140,7 +157,7 @@ class Game:
             size (int): Font size in points. Defaults to 22.
         """
         self.floats.append(FloatingText(text, x, y, color, size))
-    
+
     def _try_buy_weapon(self, w_name, cost):
         """Purchase or equip a weapon from the shop.
 
@@ -155,7 +172,7 @@ class Game:
             ps.player_coins -= cost
             ps.owned_weapons.append(w_name)
             ps.equipped_weapon = w_name
- 
+
     def _try_buy_bike(self, b_name, cost):
         """Purchase or equip a bike from the shop (identical logic to _try_buy_weapon).
 
@@ -178,19 +195,13 @@ class Game:
         Resets equip_hint_timer to FPS * 2 to show the HUD confirmation briefly.
         """
         if w_name in ps.owned_weapons:
-            if ps.equipped_weapon == w_name:
-                ps.equipped_weapon = None
-            else:
-                ps.equipped_weapon = w_name
+            ps.equipped_weapon = None if ps.equipped_weapon == w_name else w_name
             self.equip_hint_timer = FPS * 2
 
     def _equip_bike_ingame(self, b_name):
         """Toggle a purchased bike on or off during gameplay (same logic as _equip_weapon_ingame)."""
         if b_name in ps.owned_bikes:
-            if ps.equipped_bike == b_name:
-                ps.equipped_bike = None
-            else:
-                ps.equipped_bike = b_name
+            ps.equipped_bike = None if ps.equipped_bike == b_name else b_name
             self.equip_hint_timer = FPS * 2
 
     def _try_spawn_bonus(self):
@@ -213,10 +224,10 @@ class Game:
         if not cells:
             return
         c, r = random.choice(cells)
-        max_idx = min(len(BONUS_ITEMS_DATA)-1, self.level)
-        data = random.choice(BONUS_ITEMS_DATA[:max_idx+1])
+        max_idx = min(len(BONUS_ITEMS_DATA) - 1, self.level)
+        data = random.choice(BONUS_ITEMS_DATA[:max_idx + 1])
         self.bonus_items.append(BonusItem(c, r, data))
-    
+
     def run(self):
         """Start and maintain the main game loop until the window is closed.
 
@@ -232,7 +243,7 @@ class Game:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
-                
+
                 if self.state == "START":
                     if event.type == pygame.KEYDOWN:
                         if event.key == pygame.K_s:
@@ -241,13 +252,12 @@ class Game:
                             self.level = 1
                             self.score = 0
                             self.lives = 3
-                            self.init_level() 
+                            self.init_level()
 
                 elif self.state == "SHOP":
                     if event.type == pygame.KEYDOWN:
                         if event.key == pygame.K_ESCAPE:
                             self.state = "START"
-                            
                         if event.key == pygame.K_1: self._try_buy_weapon("DAGGER", 50)
                         elif event.key == pygame.K_2: self._try_buy_weapon("FIRE", 150)
                         elif event.key == pygame.K_3: self._try_buy_weapon("ICE", 300)
@@ -283,7 +293,7 @@ class Game:
                         if event.key == pygame.K_ESCAPE:
                             self._update_high_score()
                             self.state = "START"
-                    
+
             if self.state == "PLAYING":
                 if self.pacman.dir_x != 0 or self.pacman.dir_y != 0:
                     self.sound.play('waka')
@@ -301,7 +311,7 @@ class Game:
             self.draw()
             pygame.display.flip()
             self.clock.tick(FPS)
-        
+
         pygame.quit()
 
     def update(self):
@@ -312,23 +322,37 @@ class Game:
                and reset ghost_combo.
             2. Update Pacman (speed, direction, position).
             3. For each ghost, compute its strategic target then call ghost.update().
+               Targets:
+                   AStarGhost    → Pacman's current tile.
+                   BFSGhost      → 4 tiles ahead of Pacman.
+                   DijkstraGhost → 2 tiles behind Pacman.
+                   DFSGhost      → Pacman's tile normally; corner (1, MAP_ROWS-2)
+                                   when within 8 tiles of Pacman.
             4. Age and cull FloatingText, Particle, and BonusItem lists.
             5. Decrement equip_hint_timer and bonus_spawn_timer; spawn a bonus
                item when the timer reaches zero, then reset it to 8-15 seconds.
             6. Check Pacman's grid tile against dots and power_pellets:
-                   dot         → +10 score, +1 coin, dot particles.
-                   power pellet → +50 score, +5 coins, frightened_timer=600,
-                                  reverse all ghosts, POWER! float and burst.
+                   dot          → +10 score, +1 coin, dot particles.
+                   power pellet → +50 score, +5 coins, frightened_timer=600
+                                  (700 with AXE), reverse all ghosts, POWER! float.
             7. Check Pacman's tile against each BonusItem:
-                   collect     → add points (x2 with FIRE) and coins (x1.5 with FIRE),
+                   collect      → add points (x2 with FIRE) and coins (x1.5 with FIRE),
                                   floating text, particle burst.
-            8. Win check: if items_eaten >= total_items * 0.8, advance level or show WIN.
-            9. Ghost collision (distance < TILE_SIZE * 0.8):
+            8. Win check:
+                   level 3 → WIN if boss is dead OR items_eaten >= 80% of total.
+                   level 1-2 → advance to next level if items_eaten >= 80% of total.
+            9. MegaGhost update and collision (level 3 only):
+                   powered hit  → take_hit(), reset frightened_timer=0, all ghosts
+                                  lose frightened state immediately.
+                   normal hit   → lose a life, death particles, 1.5 s pause,
+                                  reset or GAMEOVER.
+           10. Ghost collision (distance < TILE_SIZE * 0.8):
                    frightened ghost → ghost_combo++, pts=200*2^(combo-1),
                                       set is_dead=True, CRIT! float, burst.
                    normal ghost     → lose a life, death particles, 1.5 s pause,
                                       reset or GAMEOVER.
         """
+        # FRIGHTENED_TIMER
         if self.frightened_timer > 0:
             self.frightened_timer -= 1
             if self.frightened_timer == 0:
@@ -336,65 +360,58 @@ class Game:
                     ghost.is_frightened = False
                 self.ghost_combo = 0
 
-        self.pacman.update(self.map, is_powered = (self.frightened_timer > 0))
+        self.pacman.update(self.map, is_powered=(self.frightened_timer > 0))
 
-        # LOGIC FOR GHOSTS
+        # 4 GHOSTS
         for ghost in self.ghosts:
-            t_c, t_r = self.pacman.c, self.pacman.r # The default target is Pacman (AStar - Blinky).
-
-            if isinstance(ghost, BFSGhost): # Pinky: Block 4 squares
+            t_c, t_r = self.pacman.c, self.pacman.r
+            if isinstance(ghost, BFSGhost):
                 t_c = self.pacman.c + self.pacman.dir_x * 4
                 t_r = self.pacman.r + self.pacman.dir_y * 4
-            elif isinstance(ghost, DijkstraGhost): # Inky: Go around to the back
+            elif isinstance(ghost, DijkstraGhost):
                 t_c = self.pacman.c - self.pacman.dir_x * 2
                 t_r = self.pacman.r - self.pacman.dir_y * 2
-            elif isinstance(ghost, DFSGhost): # Cycle: Hide if too close
+            elif isinstance(ghost, DFSGhost):
                 dist = math.hypot(ghost.c - self.pacman.c, ghost.r - self.pacman.r)
                 if dist < 8:
                     t_c, t_r = 1, MAP_ROWS - 2
-                
-            # Push target to update
             ghost.update(self.map, t_c, t_r, self.frightened_timer)
-        
-        # Update floats, particles
-        for ft in self.floats:
-            ft.update()
+
+        # PARTICLES
+        for ft in self.floats:    ft.update()
         self.floats = [ft for ft in self.floats if not ft.dead]
-
-        for pt in self.particles:
-            pt.update()
+        for pt in self.particles: pt.update()
         self.particles = [pt for pt in self.particles if not pt.dead]
-
-        # Update bonus items
-        for bi in self.bonus_items:
-            bi.update()
+        for bi in self.bonus_items: bi.update()
         self.bonus_items = [bi for bi in self.bonus_items if not bi.dead]
 
-        # Equip hint timer
         if self.equip_hint_timer > 0:
             self.equip_hint_timer -= 1
-
-        # Spawn bonus item timer
         self.bonus_spawn_timer -= 1
         if self.bonus_spawn_timer <= 0:
             self._try_spawn_bonus()
             self.bonus_spawn_timer = FPS * random.randint(8, 15)
 
+        # DOT
         pacman_grid = (self.pacman.c, self.pacman.r)
 
         if pacman_grid in self.map.dots:
             self.map.dots.remove(pacman_grid)
-            self.score        += 10
-            self.items_eaten  += 1
-            ps.player_coins   += 1
+            self.score       += 10
+            self.items_eaten += 1
+            ps.player_coins  += 1
             spawn_dot_particles(self.particles, int(self.pacman.x), int(self.pacman.y), count=4)
 
+        # POWER PELLET
         if pacman_grid in self.map.power_pellets:
             self.map.power_pellets.remove(pacman_grid)
             self.score       += 50
             self.items_eaten += 1
-            ps.player_coins     += 5
-            self.frightened_timer = 600
+            ps.player_coins  += 5
+            base_timer = 600
+            if ps.equipped_weapon == "AXE":
+                base_timer = min(base_timer + 90, 750)
+            self.frightened_timer = base_timer
             self.ghost_combo      = 0
             self.sound.play('power')
             for ghost in self.ghosts:
@@ -404,8 +421,9 @@ class Game:
             self.add_float("POWER!", int(self.pacman.x), int(self.pacman.y) - 20,
                            color=(0, 200, 255), size=26)
             spawn_burst(self.particles, int(self.pacman.x), int(self.pacman.y),
-                        [(0,200,255),(255,255,255),(0,100,255)], count=20)
-            
+                        [(0, 200, 255), WHITE, (0, 100, 255)], count=20)
+
+        # BONUS ITEM
         for bi in list(self.bonus_items):
             if (bi.c, bi.r) == pacman_grid:
                 self.bonus_items.remove(bi)
@@ -414,7 +432,7 @@ class Game:
                 name  = bi.data["name"]
                 if ps.equipped_weapon == "FIRE":
                     pts   *= 2
-                    coins = int(coins * 1.5)
+                    coins  = int(coins * 1.5)
                 self.score      += pts
                 ps.player_coins += coins
                 self._update_high_score()
@@ -424,18 +442,79 @@ class Game:
                                color=COIN_COLOR, size=18)
                 spawn_burst(self.particles, int(self.pacman.x), int(self.pacman.y),
                             [bi.data["color"], YELLOW, WHITE], count=25)
-        
-        # Win condition
-        if self.items_eaten >= self.map.total_items * 0.8:
-            pygame.mixer.stop()
-            if self.level < self.max_level:
-                self.level += 1
-                self.init_level()
-            else:
+
+        # WIN CONDITION
+       
+        if self.level == 3:
+            boss_dead  = self.mega_ghost is not None and self.mega_ghost.is_dead
+            eaten_enough = self.items_eaten >= self.map.total_items * 0.8
+            if boss_dead or eaten_enough:
+                pygame.mixer.stop()
                 self._update_high_score()
                 self.state = "WIN"
-        
-        # Ghost Collision
+                return
+
+        if self.level < 3 and self.items_eaten >= self.map.total_items * 0.8:
+            pygame.mixer.stop()
+            self.level += 1
+            self.init_level()
+
+        # MEGA GHOST COLLISION
+        if self.mega_ghost and not self.mega_ghost.is_dead:
+            self.mega_ghost.update(
+                self.map,
+                self.pacman.c, self.pacman.r,
+                self.frightened_timer
+            )
+            dist = math.hypot(self.pacman.x - self.mega_ghost.x,
+                              self.pacman.y - self.mega_ghost.y)
+            if dist < TILE_SIZE * 0.8:
+                if self.frightened_timer > 0 and not self.mega_ghost.is_stunned:
+                    killed = self.mega_ghost.take_hit()
+                    self.frightened_timer = 0
+                    for ghost in self.ghosts:
+                        ghost.is_frightened = False
+                    self.ghost_combo = 0
+
+                    if killed:
+                        ps.player_coins += 500
+                        self.score      += 1000
+                        self._update_high_score()
+                        self.add_float("BOSS DEFEATED!",
+                                       int(self.mega_ghost.x), int(self.mega_ghost.y) - 40,
+                                       color=(255, 215, 0), size=36)
+                        self.add_float("+500 COINS!",
+                                       int(self.mega_ghost.x), int(self.mega_ghost.y) - 70,
+                                       color=COIN_COLOR, size=28)
+                        spawn_burst(self.particles,
+                                    int(self.mega_ghost.x), int(self.mega_ghost.y),
+                                    [(255, 30, 30), (255, 200, 0), WHITE], count=60)
+                        self.sound.play('eat_ghost')
+                    else:
+                        hp_col = {2: (255, 160, 0), 1: (255, 30, 30)}
+                        self.add_float(f"HIT! HP {self.mega_ghost.hp}/3",
+                                       int(self.mega_ghost.x), int(self.mega_ghost.y) - 30,
+                                       color=hp_col.get(self.mega_ghost.hp, WHITE), size=26)
+                        spawn_burst(self.particles,
+                                    int(self.mega_ghost.x), int(self.mega_ghost.y),
+                                    [(255, 30, 30), WHITE], count=20)
+                        self.sound.play('eat_ghost')
+
+                elif self.frightened_timer == 0 and not self.mega_ghost.is_stunned:
+                    self.sound.stop('waka')
+                    self.sound.play('die')
+                    spawn_death_particles(self.particles,
+                                         int(self.pacman.x), int(self.pacman.y), 30)
+                    pygame.display.flip()
+                    pygame.time.wait(1500)
+                    self.lives -= 1
+                    self._update_high_score()
+                    if self.lives > 0:
+                        self.reset_positions()
+                    else:
+                        self.state = "GAMEOVER"
+                    return
+
         for ghost in self.ghosts:
             if getattr(ghost, 'is_dead', False):
                 continue
@@ -444,25 +523,21 @@ class Game:
                 if ghost.is_frightened:
                     self.ghost_combo += 1
                     pts = 200 * (2 ** (self.ghost_combo - 1))
-
-                    # FIRE SWORD: Double points/money when killing ghosts
                     if ps.equipped_weapon == "FIRE":
                         pts *= 2
                         ps.player_coins += 5
                         self.add_float("BURN x2!", int(ghost.x), int(ghost.y) - 50,
                                        color=SWORD_FIRE_COLOR, size=24)
-                    # AXE: Increase the power-up time
                     if ps.equipped_weapon == "AXE":
-                        self.frightened_timer = min(self.frightened_timer + 90, 600) # Add 1 second
-                        self.add_float("+TIME!", int(ghost.x), int(ghost.y) - 50, color=AXE_COLOR, size=24)
-                        
+                        self.frightened_timer = min(self.frightened_timer + 90, 600)
+                        self.add_float("+TIME!", int(ghost.x), int(ghost.y) - 50,
+                                       color=AXE_COLOR, size=24)
                     self.score += pts
                     self._update_high_score()
                     self.sound.play('eat_ghost')
-
                     spawn_burst(self.particles, int(ghost.x), int(ghost.y),
                                 [ghost.color, WHITE, YELLOW], count=25)
-                    ghost.is_dead = True
+                    ghost.is_dead       = True
                     ghost.is_frightened = False
                     self.add_float("CRIT!", int(ghost.x), int(ghost.y) - 30,
                                    color=(255, 0, 0), size=30)
@@ -471,7 +546,8 @@ class Game:
                 else:
                     self.sound.stop('waka')
                     self.sound.play('die')
-                    spawn_death_particles(self.particles, int(self.pacman.x), int(self.pacman.y), 30)
+                    spawn_death_particles(self.particles,
+                                         int(self.pacman.x), int(self.pacman.y), 30)
                     pygame.display.flip()
                     pygame.time.wait(1500)
                     self.lives -= 1
@@ -481,20 +557,8 @@ class Game:
                     else:
                         self.state = "GAMEOVER"
                     break
-    
+
     def _draw_ghost_preview(self, surface, x, y, color, radius=22):
-        """Draw a static ghost sprite at pixel position (x, y) for the title screen.
-
-        Renders the full body shape (dome, rectangle, wave skirt) and eyes
-        without any animation, glow, or frightened state.
-
-        Args:
-            surface (pygame.Surface): Render target.
-            x (float): Horizontal center.
-            y (float): Vertical center.
-            color (tuple): Ghost body colour.
-            radius (int): Sprite radius in pixels. Defaults to 22.
-        """
         r = radius
         pygame.draw.circle(surface, color, (int(x), int(y-2)), r)
         pygame.draw.rect(surface, color, (x-r, y-2, r*2, r+2))
@@ -508,43 +572,28 @@ class Game:
         pygame.draw.circle(surface, (0,0,180), (int(x+6), int(y-6)), 3)
         pygame.draw.circle(surface, WHITE, (int(x-5), int(y-7)), 1)
         pygame.draw.circle(surface, WHITE, (int(x+7), int(y-7)), 1)
-    
+
     def _draw_pacman_preview(self, surface, x, y, mouth_angle, radius=28):
-        """Draw a static Pacman sprite at pixel position (x, y) for the title screen.
-
-        Uses the same layered-circle technique as Pacman.draw but always faces
-        right and scales the eye and highlight offsets with the given radius so
-        the preview looks correct at any size.
-
-        Args:
-            surface (pygame.Surface): Render target.
-            x (float): Horizontal center.
-            y (float): Vertical center.
-            mouth_angle (float): Half-angle of the mouth opening in degrees.
-            radius (int): Sprite radius. Defaults to 28.
-        """
         surf_size = int(radius * 2 + 4)
         pac_surf = pygame.Surface((surf_size, surf_size))
-        COLORKEY = (255, 0, 255) 
+        COLORKEY = (255, 0, 255)
         pac_surf.fill(COLORKEY)
         pac_surf.set_colorkey(COLORKEY)
         cx, cy = surf_size // 2, surf_size // 2
         inner = tuple(min(255, ch+60) for ch in YELLOW)
-        dark  = tuple(max(0, ch-80)  for ch in YELLOW)   
+        dark  = tuple(max(0, ch-80)  for ch in YELLOW)
         pygame.draw.circle(pac_surf, inner, (cx, cy), radius)
-        pygame.draw.circle(pac_surf, dark, (cx, cy + int(radius*0.15)), radius - int(radius*0.15))
-        pygame.draw.circle(pac_surf, YELLOW, (cx, cy), radius - max(1, int(radius*0.07)))
+        pygame.draw.circle(pac_surf, dark,  (cx, cy + int(radius*0.15)), radius - int(radius*0.15))
+        pygame.draw.circle(pac_surf, YELLOW,(cx, cy), radius - max(1, int(radius*0.07)))
         hl_x = cx - radius // 3
         hl_y = cy - radius // 3
         pygame.draw.circle(pac_surf, inner, (hl_x, hl_y), radius // 4)
-        scale = radius / 14.0 
-        eye_offset_x = int(-2 * scale)
-        eye_offset_y = int(-7 * scale)
-        eye_x = cx + eye_offset_x
-        eye_y = cy + eye_offset_y
-        pygame.draw.circle(pac_surf, BLACK, (eye_x, eye_y), max(2, int(4 * scale)))          
-        pygame.draw.circle(pac_surf, WHITE, (eye_x + max(1, int(1*scale)), eye_y - max(1, int(1*scale))), max(1, int(1.5 * scale)))  
-        ext = radius * 2 
+        scale = radius / 14.0
+        eye_x = cx + int(-2 * scale)
+        eye_y = cy + int(-7 * scale)
+        pygame.draw.circle(pac_surf, BLACK, (eye_x, eye_y), max(2, int(4 * scale)))
+        pygame.draw.circle(pac_surf, WHITE, (eye_x + max(1, int(1*scale)), eye_y - max(1, int(1*scale))), max(1, int(1.5*scale)))
+        ext = radius * 2
         pygame.draw.polygon(pac_surf, COLORKEY, [
             (cx, cy),
             (cx + ext * math.cos(math.radians(-mouth_angle)),
@@ -552,21 +601,8 @@ class Game:
             (cx + ext * math.cos(math.radians(mouth_angle)),
              cy - ext * math.sin(math.radians(mouth_angle)))])
         surface.blit(pac_surf, (int(x - cx), int(y - cy)))
-        
-    def draw_shop(self):
-        """Render the Black Market purchase screen.
 
-        Layout:
-            - Gradient dark background.
-            - "BLACK MARKET" title with drop shadow.
-            - Coin balance centered below the title.
-            - Vertical divider splitting the screen into WEAPONS (left) and VEHICLES (right).
-            - Each item row shows: name (coloured), description, and one of:
-                [ EQUIPPED ] / [ RIDING ] in gold (active item, highlighted background row),
-                [ OWNED ]                in green (purchased but not active),
-                Cost: X coins            in grey  (not yet purchased).
-            - "Press ESC to return Menu" hint at the bottom.
-        """
+    def draw_shop(self):
         self.screen.fill(BLACK)
         for i in range(SCREEN_HEIGHT):
             val = int(20 * (1 - i/SCREEN_HEIGHT))
@@ -592,10 +628,10 @@ class Game:
         fsb = pygame.font.SysFont("Arial", 16, bold=False)
 
         weapons_list = [
-            ("DAGGER", "[1] Silver Dagger", "+Speed",  50, DAGGER_COLOR),
-            ("FIRE",   "[2] Fire Sword",    "x2 Points & Coins",  150, SWORD_FIRE_COLOR),
-            ("ICE",    "[3] Ice Sword",     "Slow Ghosts",        300, SWORD_ICE_COLOR),
-            ("AXE",    "[4] Battle Axe",    "+Time Buff",         500, AXE_COLOR),
+            ("DAGGER", "[1] Silver Dagger", "+Speed",           50,  DAGGER_COLOR),
+            ("FIRE",   "[2] Fire Sword",    "x2 Points & Coins",150, SWORD_FIRE_COLOR),
+            ("ICE",    "[3] Ice Sword",     "Slow Ghosts",       300, SWORD_ICE_COLOR),
+            ("AXE",    "[4] Battle Axe",    "+Time Buff",        500, AXE_COLOR),
         ]
         sy = 228
         row_h = 70
@@ -643,18 +679,8 @@ class Game:
 
         sub = self.font_small.render("Press ESC to return Menu", True, (150,150,150))
         self.screen.blit(sub, (SCREEN_WIDTH//2 - sub.get_width()//2, 560))
- 
-    def draw_start_screen(self):
-        """Render the animated title/character-select screen.
 
-        Content:
-            - "PACMAN" title with drop shadow and blinking BEST score.
-            - Four ghost previews on the left with algorithm labels.
-            - Pacman preview on the right with animated mouth.
-            - Vertical divider between the two sides.
-            - Control hints and shop prompt at the bottom.
-            - Blinking "PRESS ANY KEY TO START" text.
-        """
+    def draw_start_screen(self):
         self.screen.fill(BLACK)
         self.blink_title += 1
 
@@ -668,10 +694,10 @@ class Game:
             self.screen.blit(hs, (SCREEN_WIDTH//2 - hs.get_width()//2, 140))
 
         ghost_info = [
-            ("Blinky ",  (255,   0,   0)),
-            ("Pinky  ",  (255, 184, 255)),
-            ("Inky   ",  (  0, 255, 255)),
-            ("Clyde  ",  (255, 184,  81)),
+            ("Blinky ", (255,   0,   0)),
+            ("Pinky  ", (255, 184, 255)),
+            ("Inky   ", (  0, 255, 255)),
+            ("Clyde  ", (255, 184,  81)),
         ]
         mid            = SCREEN_WIDTH // 2
         pac_x          = mid + 170
@@ -713,26 +739,18 @@ class Game:
             self.screen.blit(start_txt, (SCREEN_WIDTH//2 - start_txt.get_width()//2, 565))
 
     def _draw_equip_hud(self):
-        """Draw a compact equipment overlay in the top-left corner during play.
-
-        Lists only owned weapons and bikes, one per line, showing:
-            [hotkey] ItemName        in the item's colour.
-            [hotkey] ItemName [ON]   with a tinted highlight row when equipped.
-
-        The overlay is hidden entirely if the player owns nothing.
-        """
         if not ps.owned_weapons and not ps.owned_bikes:
             return
         lines = []
         wmap = [
-            ("DAGGER", "Q", "Dagger",   DAGGER_COLOR),
-            ("FIRE",   "E", "FireSword",SWORD_FIRE_COLOR),
-            ("ICE",    "R", "IceSword", SWORD_ICE_COLOR),
-            ("AXE",    "T", "Axe",      AXE_COLOR),
+            ("DAGGER", "Q", "Dagger",    DAGGER_COLOR),
+            ("FIRE",   "E", "FireSword", SWORD_FIRE_COLOR),
+            ("ICE",    "R", "IceSword",  SWORD_ICE_COLOR),
+            ("AXE",    "T", "Axe",       AXE_COLOR),
         ]
         bmap = [
-            ("VESPA",  "Z", "Vespa",    BIKE_VESPA_COLOR),
-            ("SPORT",  "X", "SportBike",BIKE_SPORT_COLOR),
+            ("VESPA",  "Z", "Vespa",     BIKE_VESPA_COLOR),
+            ("SPORT",  "X", "SportBike", BIKE_SPORT_COLOR),
         ]
         for wid, key, name, color in wmap:
             if wid in ps.owned_weapons:
@@ -744,11 +762,10 @@ class Game:
                 lines.append((f"[{key}] {name}{equipped_mark}", color, ps.equipped_bike == bid))
         if not lines:
             return
-
-        pad = 5
+        pad    = 5
         line_h = 17
-        box_w = 140
-        box_h = len(lines)*line_h + pad*2 + 2
+        box_w  = 140
+        box_h  = len(lines) * line_h + pad * 2 + 2
         bg = pygame.Surface((box_w, box_h), pygame.SRCALPHA)
         bg.fill((0, 0, 0, 160))
         self.screen.blit(bg, (3, 3))
@@ -758,11 +775,9 @@ class Game:
                 hl.fill((col[0]//4, col[1]//4, col[2]//4, 180))
                 self.screen.blit(hl, (5, 3 + pad + i*line_h))
             s = self.font_tiny.render(txt, True, col)
-            self.screen.blit(s, (3+pad+2, 3+pad + i*line_h))
+            self.screen.blit(s, (3 + pad + 2, 3 + pad + i * line_h))
 
     def draw(self):
-        """Render the complete current frame to self.screen.
-        """
         if self.state == "START":
             self.draw_start_screen()
             return
@@ -775,12 +790,13 @@ class Game:
 
         for bi in self.bonus_items:
             bi.draw(self.screen)
-
         for pt in self.particles:
             pt.draw(self.screen)
-
         for ghost in self.ghosts:
             ghost.draw(self.screen, self.frightened_timer)
+
+        if self.mega_ghost and not self.mega_ghost.is_dead:
+            self.mega_ghost.draw(self.screen, self.frightened_timer)
 
         self.pacman.draw(self.screen, is_powered=(self.frightened_timer > 0))
 
@@ -789,6 +805,7 @@ class Game:
 
         self._draw_equip_hud()
 
+        # HUD bar
         hud_y = MAP_ROWS * TILE_SIZE
         pygame.draw.rect(self.screen, HUD_BG, (0, hud_y, SCREEN_WIDTH, 80))
 
@@ -805,16 +822,19 @@ class Game:
             ly = hud_y + 20
             pygame.draw.circle(self.screen, YELLOW, (lx, ly), 10)
             pygame.draw.polygon(self.screen, BLACK, [(lx, ly), (lx+12, ly-6), (lx+12, ly+6)])
+
         esc_hint = self.font_tiny.render("ESC = Menu", True, (70,70,70))
         self.screen.blit(esc_hint, (10, hud_y + 58))
         hs_surf = self.font_tiny.render(f"BEST: {self.high_score}", True, (220, 200, 0))
         self.screen.blit(hs_surf, (SCREEN_WIDTH - hs_surf.get_width() - 6, 4))
-        if self.frightened_timer > 0:
-            bar_w = int(SCREEN_WIDTH * self.frightened_timer / 600)
-            bar_color = (0, 80, 255) if (self.frightened_timer//15)%2==0 else (180,180,255)
-            pygame.draw.rect(self.screen, (0,0,80), (0, hud_y-6, SCREEN_WIDTH, 6))
-            pygame.draw.rect(self.screen, bar_color, (0, hud_y-6, bar_w, 6))
 
+        if self.frightened_timer > 0:
+            bar_w     = int(SCREEN_WIDTH * self.frightened_timer / 600)
+            bar_color = (0, 80, 255) if (self.frightened_timer//15)%2==0 else (180,180,255)
+            pygame.draw.rect(self.screen, (0,0,80),   (0, hud_y-6, SCREEN_WIDTH, 6))
+            pygame.draw.rect(self.screen, bar_color,  (0, hud_y-6, bar_w, 6))
+
+        # State overlays
         if self.state == "READY_WAIT":
             ready_txt = self.font_large.render("READY!", True, YELLOW)
             self.screen.blit(ready_txt, (SCREEN_WIDTH//2 - ready_txt.get_width()//2, 330))
@@ -825,13 +845,13 @@ class Game:
             overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
             overlay.fill((0, 0, 0, 160))
             self.screen.blit(overlay, (0, 0))
-            text = self.font_title.render("GAME OVER", True, (255,0,0))
+            text   = self.font_title.render("GAME OVER", True, (255,0,0))
             shadow = self.font_title.render("GAME OVER", True, (100,0,0))
             self.screen.blit(shadow, (SCREEN_WIDTH//2 - text.get_width()//2 + 4, 224))
             self.screen.blit(text,   (SCREEN_WIDTH//2 - text.get_width()//2,     220))
             hs_line = self.font_small.render(f"High Score: {self.high_score}", True, COIN_COLOR)
-            sc_line = self.font_small.render(f"Your Score: {self.score}", True, YELLOW)
-            sub     = self.font_small.render("Press ANY KEY to return Menu", True, WHITE)
+            sc_line = self.font_small.render(f"Your Score: {self.score}",      True, YELLOW)
+            sub     = self.font_small.render("Press ANY KEY to return Menu",   True, WHITE)
             self.screen.blit(hs_line, (SCREEN_WIDTH//2 - hs_line.get_width()//2, 330))
             self.screen.blit(sc_line, (SCREEN_WIDTH//2 - sc_line.get_width()//2, 365))
             self.screen.blit(sub,     (SCREEN_WIDTH//2 - sub.get_width()//2,     420))
@@ -840,13 +860,13 @@ class Game:
             overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
             overlay.fill((0, 0, 0, 160))
             self.screen.blit(overlay, (0, 0))
-            text = self.font_title.render("YOU WIN!", True, (0,255,0))
+            text   = self.font_title.render("YOU WIN!", True, (0,255,0))
             shadow = self.font_title.render("YOU WIN!", True, (0,100,0))
             self.screen.blit(shadow, (SCREEN_WIDTH//2 - text.get_width()//2 + 4, 224))
             self.screen.blit(text,   (SCREEN_WIDTH//2 - text.get_width()//2,     220))
             hs_line = self.font_small.render(f"High Score: {self.high_score}", True, COIN_COLOR)
-            sc_line = self.font_small.render(f"Your Score: {self.score}", True, YELLOW)
-            sub     = self.font_small.render("Press ANY KEY to return Menu", True, WHITE)
+            sc_line = self.font_small.render(f"Your Score: {self.score}",      True, YELLOW)
+            sub     = self.font_small.render("Press ANY KEY to return Menu",   True, WHITE)
             self.screen.blit(hs_line, (SCREEN_WIDTH//2 - hs_line.get_width()//2, 330))
             self.screen.blit(sc_line, (SCREEN_WIDTH//2 - sc_line.get_width()//2, 365))
             self.screen.blit(sub,     (SCREEN_WIDTH//2 - sub.get_width()//2,     420))
