@@ -76,7 +76,7 @@ class MegaGhost(AStarGhost):
         self.hp        -= 1
         self.hit_flash  = 30         
         self.is_stunned = True
-        self.stun_timer = 90       
+        self.stun_timer = 150 if ps.equipped_weapon == "AXE" else 90 
         if self.hp <= 0:
             self.is_dead = True
             return True
@@ -112,24 +112,24 @@ class MegaGhost(AStarGhost):
         self.is_frightened = False
 
         if frightened_timer > 0:
-            # Pacman powered → boss flees to the furthest corner
+            if ps.equipped_weapon == "ICE":
+                self.speed = max(0.75, {3: 2.0, 2: 2.5, 1: 3.0}.get(self.hp, 3.0) - 0.75)
             flee_c, flee_r = self._flee_target(target_c, target_r)
             super().update(game_map, flee_c, flee_r, 0)
+            self.speed = {3: 2.0, 2: 2.5, 1: 3.0}.get(self.hp, 3.0)
+            
         else:
             # Normal → chase Pacman via A*
             super().update(game_map, target_c, target_r, 0)
 
     def _flee_target(self, pacman_c, pacman_r):
         """Return the map corner furthest from Pacman's current tile.
-
         Chooses among the four playable corners so the boss always flees
         to a meaningful position rather than a random walkable cell.
         Uses Manhattan distance to pick the furthest corner.
-
         Args:
             pacman_c (int): Pacman's current column.
             pacman_r (int): Pacman's current row.
-
         Returns:
             tuple[int, int]: (col, row) of the furthest corner.
         """
@@ -228,3 +228,49 @@ class MegaGhost(AStarGhost):
         hp_col = {3: (50, 220, 50), 2: (255, 160, 0), 1: (255, 30, 30)}
         pygame.draw.rect(surface, hp_col.get(self.hp, (255, 0, 0)), (bx, by, fill_w, bar_h))
         pygame.draw.rect(surface, (200, 200, 200),  (bx - 1, by - 1, bar_w + 2, bar_h + 2), 1)
+
+        AXE_HANDLE = (101, 67, 33)
+        AXE_BLADE  = (180, 180, 195)
+        AXE_EDGE   = (230, 240, 255)
+        AXE_SHADOW = ( 60,  60,  70)
+
+        if self.dir_x == 1:
+            hx, hy   = x + r - 4, y
+            hx2, hy2 = hx + 8,   hy - 14
+            flip = 1
+        elif self.dir_x == -1:
+            hx, hy   = x - r + 4, y
+            hx2, hy2 = hx - 8,   hy - 14
+            flip = -1
+        elif self.dir_y == -1:
+            hx, hy   = x + r - 4, y - 4
+            hx2, hy2 = hx + 6,   hy - 16
+            flip = 1
+        else:
+            hx, hy   = x + r - 4, y + 4
+            hx2, hy2 = hx + 6,   hy - 12
+            flip = 1
+
+        for aura_size, alpha in [(14, 60), (10, 90), (7, 50)]:
+            aura_s = pygame.Surface((aura_size*2, aura_size*2), pygame.SRCALPHA)
+            pygame.draw.circle(aura_s, (20, 0, 40, alpha), (aura_size, aura_size), aura_size)
+            surface.blit(aura_s, (hx2 - aura_size + 4*flip, hy2 - aura_size))
+
+        pygame.draw.line(surface, AXE_HANDLE, (hx, hy), (hx2, hy2), 3)
+        pygame.draw.circle(surface, AXE_SHADOW, (hx, hy), 3)
+        pygame.draw.circle(surface, AXE_HANDLE, (hx, hy), 2)
+
+        blade_pts = [
+            (hx2 + 2*flip,  hy2 + 2),
+            (hx2 + 9*flip,  hy2 + 8),
+            (hx2 + 13*flip, hy2),
+            (hx2 + 10*flip, hy2 - 8),
+            (hx2 + 5*flip,  hy2 - 6),
+            (hx2 + 1*flip,  hy2 - 3),
+        ]
+        pygame.draw.polygon(surface, AXE_BLADE,  blade_pts)
+        pygame.draw.polygon(surface, AXE_SHADOW, blade_pts, 1)
+        pygame.draw.lines(surface, AXE_EDGE, False,
+                          [(hx2 + 13*flip, hy2), (hx2 + 9*flip, hy2 + 8),
+                           (hx2 + 2*flip,  hy2 + 2)], 1)
+        pygame.draw.circle(surface, AXE_SHADOW, (hx2 + 7*flip, hy2), 2)
