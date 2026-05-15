@@ -495,6 +495,10 @@ class Game:
                         self.add_float(f"HIT! HP {self.mega_ghost.hp}/3",
                                        int(self.mega_ghost.x), int(self.mega_ghost.y) - 30,
                                        color=hp_col.get(self.mega_ghost.hp, WHITE), size=26)
+                        if ps.equipped_weapon == "AXE":
+                            self.add_float("AXE STUN! +1s", 
+                                           int(self.mega_ghost.x), int(self.mega_ghost.y) - 55,
+                                           color = AXE_COLOR, size = 20)
                         spawn_burst(self.particles,
                                     int(self.mega_ghost.x), int(self.mega_ghost.y),
                                     [(255, 30, 30), WHITE], count=20)
