@@ -24,10 +24,12 @@ class Game:
     Owns the pygame display, clock, font cache, sound manager, and all
     game-world objects. Drives a finite state machine with the following states:
 
-        START      - animated title screen; 'S' opens the shop, any other key starts.
+        START      - animated title screen; 'S' opens shop, 'T' opens tutorial, any other key starts.
         SHOP       - Black Market purchase interface; ESC returns to START.
+        TUTORIAL   - full-screen how-to-play panel; ESC returns to START.
         READY_WAIT - 2-second countdown after level/life reset before PLAYING begins.
-        PLAYING    - active gameplay; ESC returns to START (saving high score).
+        PLAYING    - active gameplay; P pauses, ESC returns to START (saving high score).
+        PAUSE      - overlay on top of frozen game; P resumes, ESC returns to START.
         GAMEOVER   - overlay shown when lives reach 0; any key → START.
         WIN        - overlay shown when boss defeated (level 3) or ≥ 80% items eaten
                      (level 1-2); any key → START.
@@ -248,11 +250,46 @@ class Game:
                     if event.type == pygame.KEYDOWN:
                         if event.key == pygame.K_s:
                             self.state = "SHOP"
+                        elif event.key == pygame.K_t:
+                            self.state = "TUTORIAL"
                         else:
                             self.level = 1
                             self.score = 0
                             self.lives = 3
                             self.init_level()
+                    elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                        if hasattr(self, 'menu_btn_shop') and pygame.Rect(self.menu_btn_shop).collidepoint(event.pos):
+                            self.state = "SHOP"
+                        elif hasattr(self, 'menu_btn_tut') and pygame.Rect(self.menu_btn_tut).collidepoint(event.pos):
+                            self.state = "TUTORIAL"
+                        elif hasattr(self, 'menu_btn_play') and pygame.Rect(self.menu_btn_play).collidepoint(event.pos):
+                            self.level = 1
+                            self.score = 0
+                            self.lives = 3
+                            self.init_level()
+
+                elif self.state == "TUTORIAL":
+                    if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                        self.state = "START"
+
+                elif self.state == "PAUSE":
+                    if event.type == pygame.KEYDOWN:
+                        if event.key in (pygame.K_p, pygame.K_ESCAPE):
+                            if event.key == pygame.K_ESCAPE:
+                                self._update_high_score()
+                                self.state = "START"
+                                pygame.mixer.stop()
+                                pygame.mixer.music.stop()
+                            else:
+                                self.state = "PLAYING"
+                    elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                        if hasattr(self, 'pause_btn_resume') and pygame.Rect(self.pause_btn_resume).collidepoint(event.pos):
+                            self.state = "PLAYING"
+                        elif hasattr(self, 'pause_btn_menu') and pygame.Rect(self.pause_btn_menu).collidepoint(event.pos):
+                            self._update_high_score()
+                            self.state = "START"
+                            pygame.mixer.stop()
+                            pygame.mixer.music.stop()
 
                 elif self.state == "SHOP":
                     if event.type == pygame.KEYDOWN:
@@ -281,6 +318,9 @@ class Game:
                             self.state = "START"
                             pygame.mixer.stop()
                             pygame.mixer.music.stop()
+                        elif k == pygame.K_p:
+                            self.state = "PAUSE"
+                            self.sound.stop('waka')
                         elif k == pygame.K_q: self._equip_weapon_ingame("DAGGER")
                         elif k == pygame.K_e: self._equip_weapon_ingame("FIRE")
                         elif k == pygame.K_r: self._equip_weapon_ingame("ICE")
@@ -297,11 +337,13 @@ class Game:
             if self.state == "PLAYING":
                 if self.pacman.dir_x != 0 or self.pacman.dir_y != 0:
                     self.sound.play('waka')
+                    if ps.equipped_weapon == "FIRE":
+                        spawn_fire_trail(self.particles, int(self.pacman.x), int(self.pacman.y))
                 else:
                     self.sound.stop('waka')
                 self.update()
 
-            elif self.state in ("READY_WAIT", "GAMEOVER", "WIN"):
+            elif self.state in ("READY_WAIT", "GAMEOVER", "WIN", "PAUSE", "TUTORIAL"):
                 self.sound.stop('waka')
                 if self.state == "READY_WAIT":
                     self.wait_timer -= 1
@@ -632,12 +674,12 @@ class Game:
         fsb = pygame.font.SysFont("Arial", 16, bold=False)
 
         weapons_list = [
-            ("DAGGER", "[1] Silver Dagger", "+Speed",           50,  DAGGER_COLOR),
-            ("FIRE",   "[2] Fire Sword",    "x2 Points & Coins",150, SWORD_FIRE_COLOR),
-            ("ICE",    "[3] Ice Sword",     "Slow Ghosts",       300, SWORD_ICE_COLOR),
-            ("AXE",    "[4] Battle Axe",    "+Time Buff",        500, AXE_COLOR),
+            ("DAGGER", "[1] Silver Dagger", "Increases Pacman speed while powered", 50,  DAGGER_COLOR),
+            ("FIRE",   "[2] Fire Sword",    "×2 points and coins from ghosts and bonus items", 150, SWORD_FIRE_COLOR),
+            ("ICE",    "[3] Ice Sword",     "Slows the speed of frightened ghosts and MegaGhost", 300, SWORD_ICE_COLOR),
+            ("AXE",    "[4] Battle Axe",    "+1.5s Power Pellet & +1s MegaGhost stun duration",        500, AXE_COLOR),
         ]
-        sy = 228
+        sy = 240
         row_h = 70
         for w_id, w_name, w_desc, cost, color in weapons_list:
             is_equipped = (ps.equipped_weapon == w_id)
@@ -645,24 +687,24 @@ class Game:
             if is_equipped:
                 bg = pygame.Surface((mid_x - 20, 62), pygame.SRCALPHA)
                 bg.fill((color[0]//5, color[1]//5, color[2]//5, 140))
-                self.screen.blit(bg, (10, sy - 4))
-            self.screen.blit(fn.render(w_name, True, color), (20, sy))
-            self.screen.blit(fsb.render(w_desc, True, (200,200,200)), (20, sy + 26))
+                self.screen.blit(bg, (20, sy - 4))
+            self.screen.blit(fn.render(w_name, True, color), (30, sy))
+            self.screen.blit(fsb.render(w_desc, True, (200,200,200)), (30, sy + 26))
             if is_equipped:
                 st, sc = "[ EQUIPPED ]", (255,255,100)
             elif is_owned:
                 st, sc = "[ OWNED ]", (150,255,150)
             else:
                 st, sc = f"Cost: {cost} coins", (180,180,180)
-            self.screen.blit(fsb.render(st, True, sc), (20, sy + 45))
+            self.screen.blit(fsb.render(st, True, sc), (30, sy + 45))
             sy += row_h
 
         bikes_list = [
             ("VESPA", "[5] Vespa",      "+0.5 Speed",  400, BIKE_VESPA_COLOR),
             ("SPORT", "[6] Sport Bike", "+0.75 Speed", 800, BIKE_SPORT_COLOR),
         ]
-        sy = 228
-        c2 = mid_x + 10
+        sy = 240
+        c2 = mid_x + 20
         for b_id, b_name, b_desc, cost, color in bikes_list:
             is_riding = (ps.equipped_bike == b_id)
             is_owned  = (b_id in ps.owned_bikes)
@@ -684,63 +726,156 @@ class Game:
         sub = self.font_small.render("Press ESC to return Menu", True, (150,150,150))
         self.screen.blit(sub, (SCREEN_WIDTH//2 - sub.get_width()//2, 560))
 
+    def _draw_menu_button(self, surface, rect, label, key_hint, hover=False):
+        x, y, w, h = rect
+        bg_color     = (60, 60, 80)  if hover else (30, 30, 45)
+        border_color = (200, 180, 0) if hover else (100, 90, 40)
+        bg = pygame.Surface((w, h), pygame.SRCALPHA)
+        bg.fill((*bg_color, 220))
+        surface.blit(bg, (x, y))
+        pygame.draw.rect(surface, border_color, rect, 2, border_radius=4)
+        lbl  = self.font_large.render(label,    True, WHITE if hover else (200, 200, 200))
+        hint = self.font_hud.render(key_hint,   True, (160, 160, 80))
+        surface.blit(lbl,  (x + 16, y + h//2 - lbl.get_height()//2))
+        surface.blit(hint, (x + w - hint.get_width() - 12, y + h//2 - hint.get_height()//2))
+
+    def draw_tutorial(self):
+        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 210))
+        self.screen.blit(overlay, (0, 0))
+        mid   = SCREEN_WIDTH // 2
+        pad   = 40
+        box_w = SCREEN_WIDTH - pad * 2
+        box_x = pad
+        box_y = 60
+        box_h = SCREEN_HEIGHT - 140
+        box_bg = pygame.Surface((box_w, box_h), pygame.SRCALPHA)
+        box_bg.fill((20, 20, 35, 230))
+        self.screen.blit(box_bg, (box_x, box_y))
+        pygame.draw.rect(self.screen, (100, 90, 40), (box_x, box_y, box_w, box_h), 2, border_radius=6)
+
+        title = self.font_large.render("TUTORIAL", True, YELLOW)
+        self.screen.blit(title, (mid - title.get_width()//2, box_y + 0))
+
+        lbl_font = pygame.font.SysFont("Arial", 16, bold=True)
+        rows = [
+            ("MOVE",         "WASD or Arrow Keys to move Pacman",                          (180, 180, 180)),
+            ("GOAL",         "Eat 80% of dots to advance — Level 3 spawns the Boss",       (180, 180, 180)),
+            ("POWER PELLET", "Ghosts turn blue — chase and eat them for bonus points",      (100, 180, 255)),
+            ("GHOST COMBO",  "Chain ghost kills in one pellet: 200 → 400 → 800 → 1600",    (255, 200, 80)),
+            ("BONUS ITEM",   "Spawns randomly on the map — grab it for points and coins",  (100, 220, 100)),
+            ("SHOP",         "Spend coins on weapons and vehicles between runs  [S]",       COIN_COLOR),
+            ("PAUSE",        "Press P to pause  |  ESC to return to Menu",                 (120, 120, 120)),
+            ("BOSS",         "Appears at Level 3 — eat a Power Pellet to stun it (3 hits to kill)", (255, 80, 80)),
+            ("BOSS TIP",     "Boss flees to the far corner when you're powered — chase it down", (255, 140, 80)),
+            ("BOSS TIP 2",   "Ice Sword slows the Boss  |  Axe extends stun to 2.5s",     SWORD_ICE_COLOR),
+        ]
+        ry = box_y + 62
+        row_h = (box_h - 80) // len(rows)
+        for key, desc, col in rows:
+            ks = lbl_font.render(key, True, col)
+            ds = lbl_font.render(desc, True, (160, 160, 160))
+            self.screen.blit(ks, (box_x + 24, ry))
+            self.screen.blit(ds, (box_x + 200, ry))
+            ry += row_h
+
+        esc = self.font_hud.render("Press ESC to close", True, (120, 120, 120))
+        self.screen.blit(esc, (mid - esc.get_width()//2, box_y + box_h - 28))
+
+    def draw_pause(self):
+        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 160))
+        self.screen.blit(overlay, (0, 0))
+        mid   = SCREEN_WIDTH // 2
+        title = self.font_title.render("PAUSED", True, WHITE)
+        self.screen.blit(title, (mid - title.get_width()//2, 180))
+        btn_w, btn_h, btn_gap = 240, 50, 16
+        btn_x  = mid - btn_w // 2
+        mx, my = pygame.mouse.get_pos()
+        self.pause_btn_resume = (btn_x, 315,                    btn_w, btn_h)
+        self.pause_btn_menu   = (btn_x, 315 + btn_h + btn_gap,  btn_w, btn_h)
+        self._draw_menu_button(self.screen, self.pause_btn_resume, "RESUME", "[P]",
+                               hover=pygame.Rect(self.pause_btn_resume).collidepoint(mx, my))
+        self._draw_menu_button(self.screen, self.pause_btn_menu,   "QUIT",   "[ESC]",
+                               hover=pygame.Rect(self.pause_btn_menu).collidepoint(mx, my))
+
     def draw_start_screen(self):
         self.screen.fill(BLACK)
         self.blink_title += 1
+        t  = self.blink_title
+        mx, my = pygame.mouse.get_pos()
 
-        title_shadow = self.font_title.render("PACMAN", True, (100, 100, 0))
+        dot_spacing = 30
+        dot_phase   = (t * 0.3) % dot_spacing
+        for gx in range(-dot_spacing, SCREEN_WIDTH + dot_spacing, dot_spacing):
+            for gy in range(-dot_spacing, SCREEN_HEIGHT + dot_spacing, dot_spacing):
+                a = int(25 + 12 * math.sin(t * 0.04 + gx * 0.05 + gy * 0.05))
+                s = pygame.Surface((4, 4), pygame.SRCALPHA)
+                pygame.draw.circle(s, (60, 60, 100, a), (2, 2), 2)
+                self.screen.blit(s, (int(gx + dot_phase), int(gy + dot_phase)))
+
+        title_shadow = self.font_title.render("PACMAN", True, (80, 60, 0))
         title        = self.font_title.render("PACMAN", True, YELLOW)
-        self.screen.blit(title_shadow, (SCREEN_WIDTH//2 - title.get_width()//2 + 4, 34))
-        self.screen.blit(title,        (SCREEN_WIDTH//2 - title.get_width()//2,     30))
-
-        if self.high_score > 0:
-            hs = self.font_small.render(f"BEST: {self.high_score}", True, (200, 200, 0))
-            self.screen.blit(hs, (SCREEN_WIDTH//2 - hs.get_width()//2, 140))
+        tx = SCREEN_WIDTH//2 - title.get_width()//2
+        self.screen.blit(title_shadow, (tx + 5, 35))
+        self.screen.blit(title,        (tx,     30))
+        arcade = self.font_title.render("ARCADE", True, (180, 140, 0))
+        self.screen.blit(arcade, (SCREEN_WIDTH//2 - arcade.get_width()//2, 130))
 
         ghost_info = [
-            ("Blinky ", (255,   0,   0)),
-            ("Pinky  ", (255, 184, 255)),
-            ("Inky   ", (  0, 255, 255)),
-            ("Clyde  ", (255, 184,  81)),
+            ("Blinky", (255,   0,   0), "A*"),
+            ("Pinky",  (255, 184, 255), "BFS"),
+            ("Inky",   (  0, 255, 255), "Dijkstra"),
+            ("Clyde",  (255, 184,  81), "DFS"),
         ]
-        mid            = SCREEN_WIDTH // 2
-        pac_x          = mid + 170
-        ghost_center_x = mid - 170
-        left_x         = ghost_center_x - 30
-        name_x         = ghost_center_x + 5
-        start_y        = 240
-        row_h          = 60
+        mid     = SCREEN_WIDTH // 2
+        start_y = 300
+        row_h   = 65
 
-        for i, (name, color) in enumerate(ghost_info):
-            cy = start_y + i * row_h
-            self._draw_ghost_preview(self.screen, left_x, cy, color, radius=20)
-            text_name = self.font_small.render(name, True, color)
-            self.screen.blit(text_name, (name_x, cy - text_name.get_height()//2))
+        lbl_font = pygame.font.SysFont("Arial", 15, bold=True)
+        for i, (name, color, algo) in enumerate(ghost_info):
+            cy  = start_y + i * row_h
+            lx2 = mid - 320
+            aura_s = pygame.Surface((52, 52), pygame.SRCALPHA)
+            aura_a = int(25 + 18 * math.sin(t * 0.06 + i * 1.2))
+            pygame.draw.circle(aura_s, (*color, aura_a), (26, 26), 26)
+            self.screen.blit(aura_s, (lx2 - 26, cy - 26))
+            self._draw_ghost_preview(self.screen, lx2, cy, color, radius=20)
+            ns  = self.font_small.render(name, True, color)
+            as2 = lbl_font.render(algo, True, (120, 120, 120))
+            self.screen.blit(ns,  (lx2 + 28, cy - ns.get_height() - 1))
+            self.screen.blit(as2, (lx2 + 28, cy + 2))
 
-        mouth_angle = 30 * abs(math.sin(self.blink_title * 0.08))
+        mouth_angle = 30 * abs(math.sin(t * 0.08))
+        pac_x = mid + 285
         pac_y = start_y + 1.5 * row_h
+        pac_glow_r = 72
+        pg = pygame.Surface((pac_glow_r*2, pac_glow_r*2), pygame.SRCALPHA)
+        pac_ga = int(35 + 22 * math.sin(t * 0.07))
+        pygame.draw.circle(pg, (255, 220, 0, pac_ga), (pac_glow_r, pac_glow_r), pac_glow_r)
+        self.screen.blit(pg, (int(pac_x - pac_glow_r), int(pac_y - pac_glow_r)))
         self._draw_pacman_preview(self.screen, pac_x, pac_y, mouth_angle, radius=58)
 
-        lbl_font   = pygame.font.SysFont("Arial", 18, bold=True)
-        lbl_ghosts = lbl_font.render("GHOSTS", True, (180, 180, 180))
-        lbl_pac    = lbl_font.render("PACMAN", True, (180, 180, 180))
-        self.screen.blit(lbl_ghosts, (ghost_center_x - lbl_ghosts.get_width()//2, start_y - 70))
-        self.screen.blit(lbl_pac,    (pac_x          - lbl_pac.get_width()//2,    start_y - 70))
+        btn_w, btn_h, btn_gap = 300, 58, 14
+        btn_x  = mid - btn_w // 2
+        btn_y0 = start_y + len(ghost_info) * row_h - 270
 
-        pygame.draw.line(self.screen, (60, 60, 60),
-                         (mid, start_y - 60),
-                         (mid, start_y + len(ghost_info) * row_h - 10), 2)
+        self.menu_btn_play = (btn_x, btn_y0,                       btn_w, btn_h)
+        self.menu_btn_shop = (btn_x, btn_y0 + btn_h + btn_gap,     btn_w, btn_h)
+        self.menu_btn_tut  = (btn_x, btn_y0 + (btn_h+btn_gap)*2,   btn_w, btn_h)
 
-        ctrl      = self.font_hud.render("Arrow Keys / WASD to move", True, (120, 120, 120))
-        shop_hint = self.font_hud.render("Press 'S' to enter Shop (Weapons & Vehicles)", True, COIN_COLOR)
-        key_hint  = self.font_hud.render("Q/E/R/T = Weapon  |  Z/X = Bike  |  ESC = Menu", True, (160, 160, 80))
-        self.screen.blit(ctrl,      (SCREEN_WIDTH//2 - ctrl.get_width()//2,      480))
-        self.screen.blit(shop_hint, (SCREEN_WIDTH//2 - shop_hint.get_width()//2, 505))
-        self.screen.blit(key_hint,  (SCREEN_WIDTH//2 - key_hint.get_width()//2,  530))
-
-        if (self.blink_title // 30) % 2 == 0:
-            start_txt = self.font_large.render("PRESS ANY KEY TO START", True, WHITE)
-            self.screen.blit(start_txt, (SCREEN_WIDTH//2 - start_txt.get_width()//2, 565))
+        self._draw_menu_button(self.screen, self.menu_btn_play, "PLAY",     "[ANY KEY]",
+                               hover=pygame.Rect(self.menu_btn_play).collidepoint(mx, my))
+        self._draw_menu_button(self.screen, self.menu_btn_shop, "SHOP",     "[S]",
+                               hover=pygame.Rect(self.menu_btn_shop).collidepoint(mx, my))
+        self._draw_menu_button(self.screen, self.menu_btn_tut,  "TUTORIAL", "[T]",
+                               hover=pygame.Rect(self.menu_btn_tut).collidepoint(mx, my))
+        if self.high_score > 0:
+            bs_label = self.font_hud.render("BEST SCORE", True, (120, 120, 120))
+            bs_value = self.font_large.render(str(self.high_score), True, COIN_COLOR)
+            by = self.menu_btn_tut[1] + self.menu_btn_tut[3] + 60
+            self.screen.blit(bs_label, (SCREEN_WIDTH//2 - bs_label.get_width()//2, by))
+            self.screen.blit(bs_value, (SCREEN_WIDTH//2 - bs_value.get_width()//2, by + 24))
 
     def _draw_equip_hud(self):
         if not ps.owned_weapons and not ps.owned_bikes:
@@ -787,6 +922,10 @@ class Game:
             return
         if self.state == "SHOP":
             self.draw_shop()
+            return
+        if self.state == "TUTORIAL":
+            self.screen.fill(BLACK)
+            self.draw_tutorial()
             return
 
         self.screen.fill(BLACK)
@@ -874,3 +1013,6 @@ class Game:
             self.screen.blit(hs_line, (SCREEN_WIDTH//2 - hs_line.get_width()//2, 330))
             self.screen.blit(sc_line, (SCREEN_WIDTH//2 - sc_line.get_width()//2, 365))
             self.screen.blit(sub,     (SCREEN_WIDTH//2 - sub.get_width()//2,     420))
+
+        elif self.state == "PAUSE":
+            self.draw_pause()
