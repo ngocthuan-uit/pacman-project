@@ -56,7 +56,7 @@ python main.py
 | Q / E / R / T | Equip weapon (Dagger / Fire / Ice / Axe) |
 | Z / X | Equip vehicle (Vespa / Sport Bike) |
 | ESC | Return to Start screen |
-
+| P | Pause game |
 ---
 
 ## 👻 Ghost AI Algorithms
@@ -106,8 +106,8 @@ Press **S** on the Start screen to spend coins on weapons and vehicles.
 |:---|:---:|:---|
 | 🗡️ Silver Dagger | 50 | Increases Pacman speed while powered |
 | 🔥 Fire Sword | 150 | ×2 points and coins from ghosts and bonus items |
-| ❄️ Ice Sword | 300 | Slows frightened ghosts to half speed and decrease MegaGhost's speed by 0.75 px/frame|
-| 🪓 Battle Axe | 500 | +1.5 s to Power Pellet duration, +1 s to MegaGhost stun duration |
+| ❄️ Ice Sword | 300 | Slows the speed of frightened ghosts and MegaGhost|
+| 🪓 Battle Axe | 500 | +1.5s Power Pellet duration & +1s MegaGhost stun duration |
 
 | Vehicle | Cost | Effect |
 |:---|:---:|:---|
